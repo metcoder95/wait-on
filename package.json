@@ -1,41 +1,62 @@
 {
-  "name": "wait-on",
+  "name": "@metcoder95/wait-on",
   "description": "wait-on is a cross platform command line utility and Node.js API which will wait for files, ports, sockets, and http(s) resources to become available",
   "version": "6.0.1",
-  "main": "lib/wait-on",
+  "main": "index.js",
+  "types": "index.d.ts",
   "bin": {
     "wait-on": "bin/wait-on"
   },
   "author": "Jeff Barczewski <info@codewinds.com>",
+  "contributors": [
+    {
+      "name": "Carlos Fuentes",
+      "email": "me@metcoder.dev",
+      "url": "https://metcoder.dev"
+    }
+  ],
   "repository": {
     "type": "git",
-    "url": "http://github.com/jeffbski/wait-on.git"
+    "url": "https://github.com/metcoder95/wait-on.git"
   },
   "bugs": {
-    "url": "http://github.com/jeffbski/wait-on/issues"
+    "url": "https://github.com/metcoder95/wait-on/issues"
   },
   "license": "MIT",
   "scripts": {
-    "lint": "eslint \"lib/**/*.js\" \"test/**/*.js\" \"bin/wait-on\"",
-    "publish:next": "npm publish --tag next && npm view",
-    "test": "mocha --exit 'test/**/*.mocha.js'"
+    "test": "tap --cov test/**/*.test.js && npm run test:ts && npm run lint",
+    "test:ci": "tap --cov test/**/*.test.js && npm run test:ts && npm run lint:ci",
+    "test:only": "tap --only",
+    "test:unit": "tap test/**/*.test.js",
+    "test:ts": "tsd",
+    "lint": "standard | snazzy",
+    "lint:ci": "standard",
+    "release": "npx standard-version"
   },
   "engines": {
-    "node": ">=10.0.0"
+    "node": ">=14"
+  },
+  "tsd": {
+    "directory": "test"
+  },
+  "tap": {
+    "check-coverage": false
+  },
+  "standard": {
+    "ignore": ["*.d.ts", "*.test-d.ts"]
   },
   "devDependencies": {
-    "eslint": "^7.29.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-config-standard": "^16.0.3",
-    "eslint-plugin-chai-friendly": "^0.7.2",
-    "eslint-plugin-import": "^2.25.4",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^5.1.0",
-    "eslint-plugin-standard": "^5.0.0",
+    "@types/node": "^18.11.5",
     "expect-legacy": "^1.20.2",
+    "husky": "^8.0.1",
     "mkdirp": "^1.0.4",
     "mocha": "^9.2.0",
-    "temp": "^0.9.4"
+    "snazzy": "^9.0.0",
+    "standard": "^17.0.0",
+    "tap": "^16.3.0",
+    "temp": "^0.9.4",
+    "tsd": "^0.24.1",
+    "typescript": "^4.8.4"
   },
   "dependencies": {
     "axios": "^0.25.0",
@@ -62,6 +83,7 @@
     "linux",
     "windows",
     "win32",
-    "osx"
+    "osx",
+    "fork"
   ]
 }
