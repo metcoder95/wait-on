@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const minimist = require('minimist');
-const path = require('path');
-const waitOn = require('../');
+const fs = require('fs')
+const minimist = require('minimist')
+const path = require('path')
+const waitOn = require('../')
 
 const minimistOpts = {
   string: ['c', 'd', 'i', 's', 't', 'w', 'httpTimeout', 'tcpTimeout'],
@@ -20,25 +20,25 @@ const minimistOpts = {
     w: 'window',
     h: 'help'
   }
-};
+}
 
-const argv = minimist(process.argv.slice(2), minimistOpts);
+const argv = minimist(process.argv.slice(2), minimistOpts)
 // if a js/json configuration file is provided require it
-const configOpts = argv.config ? require(path.resolve(argv.config)) : {};
-const hasResources = argv._.length || (configOpts.resources && configOpts.resources.length);
+const configOpts = argv.config ? require(path.resolve(argv.config)) : {}
+const hasResources = argv._.length || (configOpts.resources && configOpts.resources.length)
 
 if (argv.help || !hasResources) {
   // help
   fs.createReadStream(path.join(__dirname, '/usage.txt'))
     .pipe(process.stdout)
     .on('close', function () {
-      process.exit(1);
-    });
+      process.exit(1)
+    })
 } else {
   // if resources are present in the command line then they take
   // precedence over those in the config file.
   if (argv._.length) {
-    configOpts.resources = argv._;
+    configOpts.resources = argv._
   }
 
   // now check for specific options and set those
@@ -55,27 +55,27 @@ if (argv.help || !hasResources) {
     'window'
   ].reduce(function (accum, x) {
     if (argv[x]) {
-      accum[x] = argv[x];
+      accum[x] = argv[x]
     }
-    return accum;
-  }, configOpts);
+    return accum
+  }, configOpts)
 
   waitOn(opts, function (err) {
     if (err) {
-      return errorExit(err);
+      return errorExit(err)
     }
     // success, could just let it exit on its own, however since
     // rxjs window waits an extra loop before heeding the unsubscribe
     // we can exit to speed things up
-    process.exit(0);
-  });
+    process.exit(0)
+  })
 }
 
-function errorExit(err) {
+function errorExit (err) {
   if (err.stack) {
-    console.error(err.stack);
+    console.error(err.stack)
   } else {
-    console.error(String(err));
+    console.error(String(err))
   }
-  process.exit(1);
+  process.exit(1)
 }
