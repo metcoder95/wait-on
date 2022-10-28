@@ -5,7 +5,7 @@
   "main": "index.js",
   "types": "index.d.ts",
   "bin": {
-    "wait-on": "bin/wait-on"
+    "wait-on": "./wait-on"
   },
   "author": "Jeff Barczewski <info@codewinds.com>",
   "contributors": [
@@ -43,7 +43,10 @@
     "check-coverage": false
   },
   "standard": {
-    "ignore": ["*.d.ts", "*.test-d.ts"]
+    "ignore": [
+      "*.d.ts",
+      "*.test-d.ts"
+    ]
   },
   "devDependencies": {
     "@types/node": "^18.11.5",
@@ -62,7 +65,7 @@
     "axios": "^0.25.0",
     "joi": "^17.6.0",
     "lodash": "^4.17.21",
-    "minimist": "^1.2.5",
+    "minimist": "^1.2.7",
     "rxjs": "^7.5.4"
   },
   "keywords": [

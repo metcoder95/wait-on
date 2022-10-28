@@ -9,7 +9,6 @@ const util = require('util')
 const axiosPkg = require('axios').default
 const axiosHttpAdapter = require('axios/lib/adapters/http')
 const {
-  isBoolean,
   isEmpty,
   negate,
   noop,
@@ -32,9 +31,8 @@ const {
 // force http adapter for axios, otherwise if using jest/jsdom xhr might
 // be used and it logs all errors polluting the logs
 const axios = axiosPkg.create({ adapter: axiosHttpAdapter })
-const isNotABoolean = negate(isBoolean)
-const isNotEmpty = negate(isEmpty)
 const fstat = promisify(fs.stat)
+const isNotEmpty = negate(isEmpty)
 const PREFIX_RE = /^((https?-get|https?|tcp|socket|file):)(.+)$/
 const HOST_PORT_RE = /^(([^:]*):)?(\d+)$/
 const HTTP_GET_RE = /^https?-get:/
@@ -170,16 +168,16 @@ function waitOnImpl (opts, cbFunc) {
   const timeoutError$ =
     timeout !== Infinity
       ? timer(timeout).pipe(
-          mergeMap(() => {
-            const resourcesWaitingFor = determineRemainingResources(
-              resources,
-              lastResourcesState
-            ).join(', ')
-            return throwError(
-              Error(`${TIMEOUT_ERR_MSG}: ${resourcesWaitingFor}`)
-            )
-          })
-        )
+        mergeMap(() => {
+          const resourcesWaitingFor = determineRemainingResources(
+            resources,
+            lastResourcesState
+          ).join(', ')
+          return throwError(
+            Error(`${TIMEOUT_ERR_MSG}: ${resourcesWaitingFor}`)
+          )
+        })
+      )
       : NEVER
 
   function cleanup (err) {
@@ -235,8 +233,8 @@ function determineRemainingResources (resources, resourceStates) {
   // resourcesState is array of completed booleans
   const resourceAndStateTuples = zip(resources, resourceStates)
   return resourceAndStateTuples
-    .filter(([, /* r */ s]) => !s)
-    .map(([r /*, s */]) => r)
+    .filter(([, s]) => !s)
+    .map(([r]) => r)
 }
 
 function createResource$ (deps, resource) {
@@ -273,31 +271,31 @@ function createFileResource$ (
   const checkOperator = reverse
     ? map(size => size === -1) // check that file does not exist
     : scan(
-        // check that file exists and the size is stable
-        (acc, x) => {
-          if (x > -1) {
-            const { size, t } = acc
-            const now = Date.now()
-            if (size !== -1 && x === size) {
-              if (now >= t + stabilityWindow) {
-                // file size has stabilized
-                output(`  file stabilized at size:${size} file:${filePath}`)
-                return true
-              }
-              output(
-                `  file exists, checking for size change during stability window, size:${size} file:${filePath}`
-              )
-              return acc // return acc unchanged, just waiting to pass stability window
+      // check that file exists and the size is stable
+      (acc, x) => {
+        if (x > -1) {
+          const { size, t } = acc
+          const now = Date.now()
+          if (size !== -1 && x === size) {
+            if (now >= t + stabilityWindow) {
+              // file size has stabilized
+              output(`  file stabilized at size:${size} file:${filePath}`)
+              return true
             }
             output(
-              `  file exists, checking for size changes, size:${x} file:${filePath}`
+              `  file exists, checking for size change during stability window, size:${size} file:${filePath}`
             )
-            return { size: x, t: now } // update acc with new value and timestamp
+            return acc // return acc unchanged, just waiting to pass stability window
           }
-          return acc
-        },
-        { size: -1, t: Date.now() }
-      )
+          output(
+            `  file exists, checking for size changes, size:${x} file:${filePath}`
+          )
+          return { size: x, t: now } // update acc with new value and timestamp
+        }
+        return acc
+      },
+      { size: -1, t: Date.now() }
+    )
 
   return timer(delay, interval).pipe(
     mergeMap(() => {
@@ -305,7 +303,7 @@ function createFileResource$ (
       return from(getFileSize(filePath))
     }, simultaneous),
     checkOperator,
-    map(x => (isNotABoolean(x) ? false : x)),
+    map(x => (x.constructor !== Boolean ? false : x)),
     startWith(false),
     distinctUntilChanged(),
     take(2)

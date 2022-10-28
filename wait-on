@@ -1,0 +1,99 @@
+#!/usr/bin/env node
+
+const fs = require('fs')
+const path = require('path')
+
+const minimist = require('minimist')
+const waitOn = require('.')
+
+const minimistOpts = {
+  string: ['c', 'd', 'i', 's', 't', 'w', 'httpTimeout', 'tcpTimeout'],
+  boolean: ['h', 'l', 'r', 'v'],
+  alias: {
+    c: 'config',
+    d: 'delay',
+    i: 'interval',
+    l: 'log',
+    r: 'reverse',
+    s: 'simultaneous',
+    t: 'timeout',
+    v: 'verbose',
+    w: 'window',
+    h: 'help'
+  }
+}
+const waitOnOpts = [
+  'delay',
+  'httpTimeout',
+  'interval',
+  'log',
+  'reverse',
+  'simultaneous',
+  'timeout',
+  'tcpTimeout',
+  'verbose',
+  'window'
+]
+
+const argv = minimist(process.argv.slice(2), minimistOpts)
+// if a js/json configuration file is provided require it
+const configOpts = argv.config != null ? require(path.resolve(argv.config)) : {}
+const hasResources =
+  argv._.length > 0 || (configOpts.resources && configOpts.resources.length > 0)
+
+if (argv.help != null || !hasResources) {
+  // help
+  const help = fs.readFileSync(path.join(__dirname, 'help.txt'), 'utf8')
+  console.log(help)
+  process.exit(0)
+} else {
+  // if resources are present in the command line then they take
+  // precedence over those in the config file.
+  if (argv._.length > 0) {
+    configOpts.resources = argv._
+  }
+
+  for (const optName of waitOnOpts) {
+    if (argv[optName] != null) {
+      configOpts[optName] = argv[optName]
+    }
+  }
+
+  // now check for specific options and set those
+  // const opts = [
+  //   'delay',
+  //   'httpTimeout',
+  //   'interval',
+  //   'log',
+  //   'reverse',
+  //   'simultaneous',
+  //   'timeout',
+  //   'tcpTimeout',
+  //   'verbose',
+  //   'window'
+  // ].reduce(function (accum, x) {
+  //   if (argv[x]) {
+  //     accum[x] = argv[x]
+  //   }
+  //   return accum
+  // }, configOpts)
+
+  waitOn(configOpts, function (err) {
+    if (err) {
+      return errorExit(err)
+    }
+    // success, could just let it exit on its own, however since
+    // rxjs window waits an extra loop before heeding the unsubscribe
+    // we can exit to speed things up
+    process.exit(0)
+  })
+}
+
+function errorExit (err) {
+  if (err.stack) {
+    console.error(err.stack)
+  } else {
+    console.error(err)
+  }
+  process.exit(1)
+}
