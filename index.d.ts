@@ -2,7 +2,18 @@
 import { AgentOptions as HTTPAgentOptions } from "node:http";
 import { AgentOptions as HTTPSAgentOptions } from "node:https";
 
-declare function WaitOn(options?: CloudPineOptions): Promise<void> | void;
+declare function WaitOn(
+  options?: WaitOnOptions,
+  cb: WaitOnCallback
+): Promise<void> | void;
+
+type WaitOnCallback = (err?: Error) => unknown;
+
+type WaitOnProxyConfig = {
+  host?: string;
+  protocol?: string;
+  auth?: WaitOnOptions["auth"];
+};
 
 type WaitOnResourcesType =
   | `file:${string}`
@@ -13,7 +24,7 @@ type WaitOnResourcesType =
   | `tcp:${string}`
   | `socket:${string}`;
 
-type WaitOnValidateStatusCB = (status: number) => boolean;
+type WaitOnValidateStatusCallback = (status: number) => boolean;
 
 type WaitOnOptions = {
   resources: WaitOnResourcesType[];
@@ -27,15 +38,23 @@ type WaitOnOptions = {
   verbose?: boolean;
   window?: number;
   passphrase?: string;
-  proxy?: boolean;
+  proxy?: boolean | WaitOnProxyConfig;
   auth?: {
     user: string;
     pass: string;
   };
   headers?: Record<string, string | number>;
   validateStatus?: WaitOnValidateStatusCb;
+  strictSSL?: boolean;
 } & HTTPAgentOptions &
   HTTPSAgentOptions;
 
 export default WaitOn;
-export { WaitOnOptions, WaitOnResourcesType, WaitOnValidateStatusCB, WaitOn };
+export {
+  WaitOnOptions,
+  WaitOnProxyConfig,
+  WaitOnResourcesType,
+  WaitOnValidateStatusCallback,
+  WaitOnCallback,
+  WaitOn,
+};
