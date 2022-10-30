@@ -41,7 +41,7 @@ const configOpts = argv.config != null ? require(path.resolve(argv.config)) : {}
 const hasResources =
   argv._.length > 0 || (configOpts.resources && configOpts.resources.length > 0)
 
-if (argv.help != null || !hasResources) {
+if (argv.help || !hasResources) {
   // help
   const help = fs.readFileSync(path.join(__dirname, 'help.txt'), 'utf8')
   console.log(help)
