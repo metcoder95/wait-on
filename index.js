@@ -489,4 +489,7 @@ function negateAsync (asyncFn) {
   }
 }
 
+// Add support for multiple export combos
 module.exports = waitOn
+module.exports.waitOn = waitOn
+module.exports.default = waitOn
