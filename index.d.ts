@@ -3,8 +3,8 @@ import { AgentOptions as HTTPAgentOptions } from "node:http";
 import { AgentOptions as HTTPSAgentOptions } from "node:https";
 
 declare function WaitOn(
-  options?: WaitOnOptions,
-  cb: WaitOnCallback
+  options: WaitOnOptions,
+  cb?: WaitOnCallback
 ): Promise<void> | void;
 
 type WaitOnCallback = (err?: Error) => unknown;
@@ -44,7 +44,7 @@ type WaitOnOptions = {
     pass: string;
   };
   headers?: Record<string, string | number>;
-  validateStatus?: WaitOnValidateStatusCb;
+  validateStatus?: WaitOnValidateStatusCallback;
   strictSSL?: boolean;
 } & HTTPAgentOptions &
   HTTPSAgentOptions;
