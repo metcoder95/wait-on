@@ -38,10 +38,8 @@ const waitOnOpts = [
 const argv = minimist(process.argv.slice(2), minimistOpts)
 // if a js/json configuration file is provided require it
 const configOpts = argv.config != null ? require(path.resolve(argv.config)) : {}
-const hasResources =
-  argv._.length > 0 || (configOpts.resources && configOpts.resources.length > 0)
 
-if (argv.help || !hasResources) {
+if (argv.help) {
   // help
   const help = fs.readFileSync(path.join(__dirname, 'help.txt'), 'utf8')
   console.log(help)
