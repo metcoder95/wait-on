@@ -80,7 +80,7 @@ if (argv.help || !hasResources) {
 
   waitOn(configOpts, function (err) {
     if (err) {
-      return errorExit(err)
+      return errorExit(err.message)
     }
     // success, could just let it exit on its own, however since
     // rxjs window waits an extra loop before heeding the unsubscribe
@@ -90,10 +90,6 @@ if (argv.help || !hasResources) {
 }
 
 function errorExit (err) {
-  if (err.stack) {
-    console.error(err.stack)
-  } else {
-    console.error(err)
-  }
+  console.error(err)
   process.exit(1)
 }

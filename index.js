@@ -7,7 +7,7 @@ const util = require('util')
 const { promisify } = require('util')
 
 const Ajv = require('ajv')
-const Joi = require('joi')
+// const Joi = require('joi')
 const axiosPkg = require('axios').default
 const axiosHttpAdapter = require('axios/lib/adapters/http')
 const { isEmpty, negate, noop, once, partial, pick, zip } = require('lodash/fp')
@@ -22,11 +22,14 @@ const {
   takeWhile
 } = require('rxjs/operators')
 
+const { parseAjvErrors } = require('./lib/error')
+
 // force http adapter for axios, otherwise if using jest/jsdom xhr might
 // be used and it logs all errors polluting the logs
 const axios = axiosPkg.create({ adapter: axiosHttpAdapter })
 const ajv = new Ajv({
-  strict: false
+  strict: false,
+  useDefaults: true
 })
 const fstat = promisify(fs.stat)
 const isNotEmpty = negate(isEmpty)
@@ -50,40 +53,50 @@ const VALIDATION_SCHEMA = ajv.compile({
     },
     delay: {
       type: 'integer',
-      minimum: 0
+      minimum: 0,
+      default: 0
     },
     httpTimeout: {
       type: 'integer',
-      minimum: 0
+      minimum: 0,
+      default: 0
     },
     interval: {
       type: 'integer',
-      minimum: 0
+      minimum: 0,
+      default: 250
     },
     log: {
-      type: 'boolean'
+      type: 'boolean',
+      default: false
     },
     reverse: {
-      type: 'boolean'
+      type: 'boolean',
+      default: false
     },
     simultaneous: {
       type: 'integer',
-      minimum: 1
+      minimum: 1,
+      defaults: 10
     },
     timeout: {
       type: 'integer',
-      minimum: 0
+      minimum: 0,
+      default: 60000 // 1 minute
     },
     tcpTimeout: {
       type: 'integer',
-      minimum: 0
+      minimum: 0,
+      default: 300 // 300ms
     },
     verbose: {
-      type: 'boolean'
+      type: 'boolean',
+      default: false
     },
     window: {
       type: 'integer',
-      minimum: 0
+      minimum: 0,
+      default: 750
     },
     ca: {
       type: ['string', 'object']
@@ -98,10 +111,12 @@ const VALIDATION_SCHEMA = ajv.compile({
       type: 'string'
     },
     strictSSL: {
-      type: 'boolean'
+      type: 'boolean',
+      default: false
     },
     followRedirect: {
-      type: 'boolean'
+      type: 'boolean',
+      default: true
     },
     headers: {
       type: 'object'
@@ -149,56 +164,56 @@ const VALIDATION_SCHEMA = ajv.compile({
     }
   }
 })
-const WAIT_ON_SCHEMA = Joi.object({
-  resources: Joi.array()
-    .items(Joi.string().required())
-    .required(),
-  delay: Joi.number()
-    .integer()
-    .min(0)
-    .default(0),
-  httpTimeout: Joi.number()
-    .integer()
-    .min(0),
-  interval: Joi.number()
-    .integer()
-    .min(0)
-    .default(250),
-  log: Joi.boolean().default(false),
-  reverse: Joi.boolean().default(false),
-  simultaneous: Joi.number()
-    .integer()
-    .min(1)
-    .default(Infinity),
-  timeout: Joi.number()
-    .integer()
-    .min(0)
-    .default(Infinity),
-  validateStatus: Joi.function(),
-  verbose: Joi.boolean().default(false),
-  window: Joi.number()
-    .integer()
-    .min(0)
-    .default(750),
-  tcpTimeout: Joi.number()
-    .integer()
-    .min(0)
-    .default(300),
+// const WAIT_ON_SCHEMA = Joi.object({
+//   resources: Joi.array()
+//     .items(Joi.string().required())
+//     .required(),
+//   delay: Joi.number()
+//     .integer()
+//     .min(0)
+//     .default(0),
+//   httpTimeout: Joi.number()
+//     .integer()
+//     .min(0),
+//   interval: Joi.number()
+//     .integer()
+//     .min(0)
+//     .default(250),
+//   log: Joi.boolean().default(false),
+//   reverse: Joi.boolean().default(false),
+//   simultaneous: Joi.number()
+//     .integer()
+//     .min(1)
+//     .default(Infinity),
+//   timeout: Joi.number()
+//     .integer()
+//     .min(0)
+//     .default(Infinity),
+//   validateStatus: Joi.function(),
+//   verbose: Joi.boolean().default(false),
+//   window: Joi.number()
+//     .integer()
+//     .min(0)
+//     .default(750),
+//   tcpTimeout: Joi.number()
+//     .integer()
+//     .min(0)
+//     .default(300),
 
-  // http/https options
-  ca: [Joi.string(), Joi.binary()],
-  cert: [Joi.string(), Joi.binary()],
-  key: [Joi.string(), Joi.binary(), Joi.object()],
-  passphrase: Joi.string(),
-  proxy: [Joi.boolean(), Joi.object()],
-  auth: Joi.object({
-    username: Joi.string(),
-    password: Joi.string()
-  }),
-  strictSSL: Joi.boolean().default(false),
-  followRedirect: Joi.boolean().default(true), // HTTP 3XX responses
-  headers: Joi.object()
-})
+//   // http/https options
+//   ca: [Joi.string(), Joi.binary()],
+//   cert: [Joi.string(), Joi.binary()],
+//   key: [Joi.string(), Joi.binary(), Joi.object()],
+//   passphrase: Joi.string(),
+//   proxy: [Joi.boolean(), Joi.object()],
+//   auth: Joi.object({
+//     username: Joi.string(),
+//     password: Joi.string()
+//   }),
+//   strictSSL: Joi.boolean().default(false),
+//   followRedirect: Joi.boolean().default(true), // HTTP 3XX responses
+//   headers: Joi.object()
+// })
 
 /**
    Waits for resources to become available before calling callback
@@ -233,11 +248,11 @@ const WAIT_ON_SCHEMA = Joi.object({
    if not specified, wait-on will return a promise that will be rejected if resource checks did not succeed or resolved otherwise
  */
 function waitOn (opts, cb) {
-  if (cb !== undefined) {
+  if (cb != null && cb.constructor.name === 'Function') {
     return waitOnImpl(opts, cb)
   } else {
-    // promise API
-    return new Promise(function (resolve, reject) {
+    // Promise API
+    return new Promise((resolve, reject) => {
       waitOnImpl(opts, function (err) {
         if (err) {
           reject(err)
@@ -253,8 +268,10 @@ function waitOnImpl (opts, cbFunc) {
   const cbOnce = once(cbFunc)
   const validResult = VALIDATION_SCHEMA(opts)
   if (!validResult) {
-    return cbOnce(VALIDATION_SCHEMA.errors)
+    const parseError = parseAjvErrors(VALIDATION_SCHEMA.errors)
+    return cbOnce(new Error(`Invalid options: ${parseError}`))
   }
+
   const validatedOpts = {
     ...validResult.value, // use defaults
     // window needs to be at least interval
