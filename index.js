@@ -1,22 +1,16 @@
 'use strict'
 
 const fs = require('fs')
-const { promisify } = require('util')
-const Joi = require('joi')
 const https = require('https')
 const net = require('net')
 const util = require('util')
+const { promisify } = require('util')
+
+const Ajv = require('ajv')
+const Joi = require('joi')
 const axiosPkg = require('axios').default
 const axiosHttpAdapter = require('axios/lib/adapters/http')
-const {
-  isEmpty,
-  negate,
-  noop,
-  once,
-  partial,
-  pick,
-  zip
-} = require('lodash/fp')
+const { isEmpty, negate, noop, once, partial, pick, zip } = require('lodash/fp')
 const { NEVER, combineLatest, from, merge, throwError, timer } = require('rxjs')
 const {
   distinctUntilChanged,
@@ -31,6 +25,9 @@ const {
 // force http adapter for axios, otherwise if using jest/jsdom xhr might
 // be used and it logs all errors polluting the logs
 const axios = axiosPkg.create({ adapter: axiosHttpAdapter })
+const ajv = new Ajv({
+  strict: false
+})
 const fstat = promisify(fs.stat)
 const isNotEmpty = negate(isEmpty)
 const PREFIX_RE = /^((https?-get|https?|tcp|socket|file):)(.+)$/
@@ -39,6 +36,119 @@ const HTTP_GET_RE = /^https?-get:/
 const HTTP_UNIX_RE = /^http:\/\/unix:([^:]+):([^:]+)$/
 const TIMEOUT_ERR_MSG = 'Timed out waiting for'
 
+const VALIDATION_SCHEMA = ajv.compile({
+  type: 'object',
+  additionalProperties: false,
+  required: ['resources'],
+  properties: {
+    resources: {
+      type: 'array',
+      minItems: 1,
+      items: {
+        type: 'string'
+      }
+    },
+    delay: {
+      type: 'integer',
+      minimum: 0
+    },
+    httpTimeout: {
+      type: 'integer',
+      minimum: 0
+    },
+    interval: {
+      type: 'integer',
+      minimum: 0
+    },
+    log: {
+      type: 'boolean'
+    },
+    reverse: {
+      type: 'boolean'
+    },
+    simultaneous: {
+      type: 'integer',
+      minimum: 1
+    },
+    timeout: {
+      type: 'integer',
+      minimum: 0
+    },
+    tcpTimeout: {
+      type: 'integer',
+      minimum: 0
+    },
+    verbose: {
+      type: 'boolean'
+    },
+    window: {
+      type: 'integer',
+      minimum: 0
+    },
+    ca: {
+      type: ['string', 'object']
+    },
+    cert: {
+      type: ['string', 'object']
+    },
+    key: {
+      type: ['string', 'object']
+    },
+    passphrase: {
+      type: 'string'
+    },
+    strictSSL: {
+      type: 'boolean'
+    },
+    followRedirect: {
+      type: 'boolean'
+    },
+    headers: {
+      type: 'object'
+    },
+    auth: {
+      type: 'object',
+      required: ['username', 'password'],
+      properties: {
+        username: {
+          type: 'string'
+        },
+        password: {
+          type: 'string'
+        }
+      }
+    },
+    proxy: {
+      oneOf: [
+        { type: 'boolean' },
+        {
+          type: 'object',
+          required: ['host'],
+          properties: {
+            host: {
+              type: 'string'
+            },
+            port: {
+              type: 'integer'
+            },
+            auth: {
+              type: 'object',
+              required: ['username', 'password'],
+              properties: {
+                username: {
+                  type: 'string'
+                },
+                password: {
+                  type: 'string'
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+})
 const WAIT_ON_SCHEMA = Joi.object({
   resources: Joi.array()
     .items(Joi.string().required())
@@ -141,9 +251,9 @@ function waitOn (opts, cb) {
 
 function waitOnImpl (opts, cbFunc) {
   const cbOnce = once(cbFunc)
-  const validResult = WAIT_ON_SCHEMA.validate(opts)
-  if (validResult.error) {
-    return cbOnce(validResult.error)
+  const validResult = VALIDATION_SCHEMA(opts)
+  if (!validResult) {
+    return cbOnce(VALIDATION_SCHEMA.errors)
   }
   const validatedOpts = {
     ...validResult.value, // use defaults
