@@ -265,29 +265,32 @@ function waitOn (opts, cb) {
 }
 
 function waitOnImpl (opts, cbFunc) {
+  // TODO: deepclone instead of shallow
+  const waitOnOptions = Object.assign({}, opts)
   const cbOnce = once(cbFunc)
-  const validResult = VALIDATION_SCHEMA(opts)
+  const validResult = VALIDATION_SCHEMA(waitOnOptions)
   if (!validResult) {
     const parseError = parseAjvErrors(VALIDATION_SCHEMA.errors)
     return cbOnce(new Error(`Invalid options: ${parseError}`))
   }
 
-  const validatedOpts = {
-    ...validResult.value, // use defaults
-    // window needs to be at least interval
-    ...(validResult.value.window < validResult.value.interval
-      ? { window: validResult.value.interval }
-      : {}),
-    ...(validResult.value.verbose ? { log: true } : {}) // if debug logging then normal log is also enabled
+  // window needs to be at least interval
+  if (waitOnOptions.window < waitOnOptions.interval) {
+    waitOnOptions.window = waitOnOptions.interval
   }
 
-  const { resources, log: shouldLog, timeout, verbose, reverse } = validatedOpts
+  // if debug logging then normal log is also enabled
+  if (waitOnOptions.verbose) {
+    waitOnOptions.log = true
+  }
+
+  const { resources, log: shouldLog, timeout, verbose, reverse } = waitOnOptions
 
   const output = verbose ? console.log.bind() : noop
   const log = shouldLog ? console.log.bind() : noop
   const logWaitingForWDeps = partial(logWaitingFor, [{ log, resources }])
   const createResourceWithDeps$ = partial(createResource$, [
-    { validatedOpts, output, log }
+    { validatedOpts: waitOnOptions, output, log }
   ])
 
   let lastResourcesState = resources // the last state we had recorded
