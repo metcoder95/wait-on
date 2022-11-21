@@ -62,8 +62,11 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
+    "@metcoder95/tiny-pool": "^1.0.0",
     "ajv": "^8.11.0",
     "minimist": "^1.2.7",
+    "ora": "^6.1.2",
+    "signale": "^1.4.0",
     "undici": "^5.12.0"
   },
   "keywords": [
