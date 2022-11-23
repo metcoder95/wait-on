@@ -1,5 +1,4 @@
 'use strict'
-// const { promisify } = require('node:util')
 const { createServer } = require('node:http')
 const { setTimeout } = require('node:timers/promises')
 
