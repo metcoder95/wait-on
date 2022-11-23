@@ -1,219 +1,22 @@
 'use strict'
 
-const fs = require('fs')
-const https = require('https')
-const net = require('net')
-const util = require('util')
-const { promisify } = require('util')
+const fs = require('node:fs')
+const { promisify } = require('node:util')
+const { once } = require('node:events')
+const { setTimeout } = require('node:timers/promises')
 
-const Ajv = require('ajv')
-// const Joi = require('joi')
-const axiosPkg = require('axios').default
-const axiosHttpAdapter = require('axios/lib/adapters/http')
-const { isEmpty, negate, noop, once, partial, pick, zip } = require('lodash/fp')
-const { NEVER, combineLatest, from, merge, throwError, timer } = require('rxjs')
+const { AsyncPool } = require('@metcoder95/tiny-pool')
+
 const {
-  distinctUntilChanged,
-  map,
-  mergeMap,
-  scan,
-  startWith,
-  take,
-  takeWhile
-} = require('rxjs/operators')
+  validateHooks,
+  validateOptions,
+  parseAjvError,
+  parseAjvErrors
+} = require('./lib/validate')
+const { createHTTPResource } = require('./lib/http')
 
-const { parseAjvErrors } = require('./lib/error')
-
-// force http adapter for axios, otherwise if using jest/jsdom xhr might
-// be used and it logs all errors polluting the logs
-const axios = axiosPkg.create({ adapter: axiosHttpAdapter })
-const ajv = new Ajv({
-  strict: false,
-  useDefaults: true
-})
 const fstat = promisify(fs.stat)
-const isNotEmpty = negate(isEmpty)
 const PREFIX_RE = /^((https?-get|https?|tcp|socket|file):)(.+)$/
-const HOST_PORT_RE = /^(([^:]*):)?(\d+)$/
-const HTTP_GET_RE = /^https?-get:/
-const HTTP_UNIX_RE = /^http:\/\/unix:([^:]+):([^:]+)$/
-const TIMEOUT_ERR_MSG = 'Timed out waiting for'
-
-const VALIDATION_SCHEMA = ajv.compile({
-  type: 'object',
-  additionalProperties: false,
-  required: ['resources'],
-  properties: {
-    resources: {
-      type: 'array',
-      minItems: 1,
-      items: {
-        type: 'string'
-      }
-    },
-    delay: {
-      type: 'integer',
-      minimum: 0,
-      default: 0
-    },
-    httpTimeout: {
-      type: 'integer',
-      minimum: 0,
-      default: 0
-    },
-    interval: {
-      type: 'integer',
-      minimum: 0,
-      default: 250
-    },
-    log: {
-      type: 'boolean',
-      default: false
-    },
-    reverse: {
-      type: 'boolean',
-      default: false
-    },
-    simultaneous: {
-      type: 'integer',
-      minimum: 1,
-      defaults: 10
-    },
-    timeout: {
-      type: 'integer',
-      minimum: 0,
-      default: 60000 // 1 minute
-    },
-    tcpTimeout: {
-      type: 'integer',
-      minimum: 0,
-      default: 300 // 300ms
-    },
-    verbose: {
-      type: 'boolean',
-      default: false
-    },
-    window: {
-      type: 'integer',
-      minimum: 0,
-      default: 750
-    },
-    ca: {
-      type: ['string', 'object']
-    },
-    cert: {
-      type: ['string', 'object']
-    },
-    key: {
-      type: ['string', 'object']
-    },
-    passphrase: {
-      type: 'string'
-    },
-    strictSSL: {
-      type: 'boolean',
-      default: false
-    },
-    followRedirect: {
-      type: 'boolean',
-      default: true
-    },
-    headers: {
-      type: 'object'
-    },
-    auth: {
-      type: 'object',
-      required: ['username', 'password'],
-      properties: {
-        username: {
-          type: 'string'
-        },
-        password: {
-          type: 'string'
-        }
-      }
-    },
-    proxy: {
-      oneOf: [
-        { type: 'boolean' },
-        {
-          type: 'object',
-          required: ['host'],
-          properties: {
-            host: {
-              type: 'string'
-            },
-            port: {
-              type: 'integer'
-            },
-            auth: {
-              type: 'object',
-              required: ['username', 'password'],
-              properties: {
-                username: {
-                  type: 'string'
-                },
-                password: {
-                  type: 'string'
-                }
-              }
-            }
-          }
-        }
-      ]
-    }
-  }
-})
-// const WAIT_ON_SCHEMA = Joi.object({
-//   resources: Joi.array()
-//     .items(Joi.string().required())
-//     .required(),
-//   delay: Joi.number()
-//     .integer()
-//     .min(0)
-//     .default(0),
-//   httpTimeout: Joi.number()
-//     .integer()
-//     .min(0),
-//   interval: Joi.number()
-//     .integer()
-//     .min(0)
-//     .default(250),
-//   log: Joi.boolean().default(false),
-//   reverse: Joi.boolean().default(false),
-//   simultaneous: Joi.number()
-//     .integer()
-//     .min(1)
-//     .default(Infinity),
-//   timeout: Joi.number()
-//     .integer()
-//     .min(0)
-//     .default(Infinity),
-//   validateStatus: Joi.function(),
-//   verbose: Joi.boolean().default(false),
-//   window: Joi.number()
-//     .integer()
-//     .min(0)
-//     .default(750),
-//   tcpTimeout: Joi.number()
-//     .integer()
-//     .min(0)
-//     .default(300),
-
-//   // http/https options
-//   ca: [Joi.string(), Joi.binary()],
-//   cert: [Joi.string(), Joi.binary()],
-//   key: [Joi.string(), Joi.binary(), Joi.object()],
-//   passphrase: Joi.string(),
-//   proxy: [Joi.boolean(), Joi.object()],
-//   auth: Joi.object({
-//     username: Joi.string(),
-//     password: Joi.string()
-//   }),
-//   strictSSL: Joi.boolean().default(false),
-//   followRedirect: Joi.boolean().default(true), // HTTP 3XX responses
-//   headers: Joi.object()
-// })
 
 /**
    Waits for resources to become available before calling callback
@@ -247,31 +50,21 @@ const VALIDATION_SCHEMA = ajv.compile({
    @param cb optional callback function with signature cb(err) - if err is provided then, resource checks did not succeed
    if not specified, wait-on will return a promise that will be rejected if resource checks did not succeed or resolved otherwise
  */
-function waitOn (opts, cb) {
+function WaitOn (opts, cb) {
   if (cb != null && cb.constructor.name === 'Function') {
-    return waitOnImpl(opts, cb)
+    waitOnImpl(opts).then(cb, cb)
   } else {
-    // Promise API
-    return new Promise((resolve, reject) => {
-      waitOnImpl(opts, function (err) {
-        if (err) {
-          reject(err)
-        } else {
-          resolve()
-        }
-      })
-    })
+    return waitOnImpl(opts)
   }
 }
 
-function waitOnImpl (opts, cbFunc) {
+async function waitOnImpl (opts) {
   // TODO: deepclone instead of shallow
   const waitOnOptions = Object.assign({}, opts)
-  const cbOnce = once(cbFunc)
-  const validResult = VALIDATION_SCHEMA(waitOnOptions)
+  const validResult = validateOptions(waitOnOptions)
   if (!validResult) {
-    const parseError = parseAjvErrors(VALIDATION_SCHEMA.errors)
-    return cbOnce(new Error(`Invalid options: ${parseError}`))
+    const parsedError = parseAjvErrors(validateOptions.errors)
+    throw new Error(`Invalid options: ${parsedError}`)
   }
 
   // window needs to be at least interval
@@ -279,165 +72,171 @@ function waitOnImpl (opts, cbFunc) {
     waitOnOptions.window = waitOnOptions.interval
   }
 
-  // if debug logging then normal log is also enabled
-  if (waitOnOptions.verbose) {
-    waitOnOptions.log = true
-  }
-
-  const { resources, log: shouldLog, timeout, verbose, reverse } = waitOnOptions
-
-  const output = verbose ? console.log.bind() : noop
-  const log = shouldLog ? console.log.bind() : noop
-  const logWaitingForWDeps = partial(logWaitingFor, [{ log, resources }])
-  const createResourceWithDeps$ = partial(createResource$, [
-    { validatedOpts: waitOnOptions, output, log }
-  ])
-
-  let lastResourcesState = resources // the last state we had recorded
-
-  const timeoutError$ =
-    timeout !== Infinity
-      ? timer(timeout).pipe(
-        mergeMap(() => {
-          const resourcesWaitingFor = determineRemainingResources(
-            resources,
-            lastResourcesState
-          ).join(', ')
-          return throwError(
-            Error(`${TIMEOUT_ERR_MSG}: ${resourcesWaitingFor}`)
-          )
-        })
-      )
-      : NEVER
-
-  function cleanup (err) {
-    if (err) {
-      if (err.message.startsWith(TIMEOUT_ERR_MSG)) {
-        log('wait-on(%s) %s; exiting with error', process.pid, err.message)
-      } else {
-        log('wait-on(%s) exiting with error', process.pid, err)
-      }
-    } else {
-      // no error, we are complete
-      log('wait-on(%s) complete', process.pid)
+  // Validate hooks
+  if (waitOnOptions.hooks != null) {
+    const areHooksInvalid = validateHooks(waitOnOptions.hooks)
+    if (areHooksInvalid != null) {
+      const parsedError = parseAjvError(areHooksInvalid)
+      throw new Error(`Invalid hook: ${parsedError}`)
     }
-    cbOnce(err)
   }
 
-  if (reverse) {
-    log('wait-on reverse mode - waiting for resources to be unavailable')
+  const {
+    resources: incomingResources,
+    timeout,
+    simultaneous,
+    events
+  } = waitOnOptions
+  const resources = []
+  const invalidResources = []
+
+  for (const resource of incomingResources) {
+    const parsedResource = createResource(waitOnOptions, resource)
+
+    if (parsedResource != null) {
+      resources.push(parsedResource)
+    } else {
+      invalidResources.push(resource)
+    }
   }
-  logWaitingForWDeps(resources)
 
-  const resourcesCompleted$ = combineLatest(
-    resources.map(createResourceWithDeps$)
-  )
+  if (events?.onInvalidResource != null) {
+    for (const resource of invalidResources) {
+      events.onInvalidResource(resource)
+    }
+  }
 
-  merge(timeoutError$, resourcesCompleted$)
-    .pipe(takeWhile(resourceStates => resourceStates.some(x => !x)))
-    .subscribe({
-      next: resourceStates => {
-        lastResourcesState = resourceStates
-        logWaitingForWDeps(resourceStates)
-      },
-      error: cleanup,
-      complete: cleanup
+  const pool = new AsyncPool({
+    maxConcurrent: simultaneous,
+    maxEnqueued: resources.length * 2
+  })
+  const controller = new AbortController()
+  const timerController = new AbortController()
+  const globalState = new Map()
+
+  if (waitOnOptions.delay != null && waitOnOptions.delay > 0) {
+    await setTimeout(waitOnOptions.delay)
+  }
+
+  for (const resource of resources) {
+    const promise = pool.run(resource.exec.bind(null, controller.signal))
+    const { onResponse, onError } = handleResponse({
+      resource,
+      pool,
+      waitOnOptions,
+      signal: controller.signal,
+      state: globalState
     })
+
+    // TODO: validate hooks before scheduling
+    promise.then(onResponse, onError)
+  }
+
+  const timer = timedout(timeout, controller, timerController.signal)
+
+  let success
+  while (success == null) {
+    let unfinished = false
+    // Serves as checkpoint to validate the status of all resources
+    const result = await Promise.race([once(pool, 'idle'), timer])
+    // If the `once` function returns an array when the event is emitted, then
+    // the pool is idle, otherwise the timer has expired
+    const timedout = Array.isArray(result) ? false : result
+
+    for (const [, state] of globalState) {
+      if (!state) {
+        unfinished = true
+        break
+      }
+    }
+
+    if (unfinished && !timedout) continue
+    else {
+      timerController.abort()
+      success = !timedout
+      break
+    }
+  }
+
+  return success
 }
 
-function logWaitingFor ({ log, resources }, resourceStates) {
-  const remainingResources = determineRemainingResources(
-    resources,
-    resourceStates
-  )
-  if (isNotEmpty(remainingResources)) {
-    log(
-      `waiting for ${
-        remainingResources.length
-      } resources: ${remainingResources.join(', ')}`
-    )
+async function timedout (timeout, controller, signal) {
+  const timed = await setTimeout(timeout, true, {
+    signal
+  })
+
+  process.nextTick(() => controller.abort())
+
+  return timed
+}
+
+function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
+  const { interval, events, reverse } = waitOnOptions
+
+  state.set(resource.name, false)
+
+  return {
+    onError,
+    onResponse
+  }
+
+  function onResponse ({ successfull, reason }) {
+    // All done
+    if ((reverse && !successfull) || (!reverse && successfull)) {
+      events?.onResourceDone?.(resource.name)
+      state.set(resource.name, true)
+
+      return
+    }
+
+    events?.onResourceResponse?.(resource.name, reason)
+
+    if (signal.aborted) {
+      events?.onResourceError?.(resource.name, new Error('Request timed out'))
+      state.set(resource.name, true)
+
+      return
+    }
+
+    return setTimeout(interval)
+      .then(() => pool.run(resource.exec.bind(null, signal)))
+      .then(onResponse, onError)
+  }
+
+  function onError (err) {
+    events?.onResourceError?.(resource.name, err)
+
+    if (signal.aborted) {
+      events?.onResourceTimeout?.(resource.name, new Error('Request timed out'))
+      state.set(resource.name, true)
+
+      return
+    }
+
+    return setTimeout(interval)
+      .then(() => pool.run(resource.exec.bind(null, signal)))
+      .then(onResponse, onError)
   }
 }
 
-function determineRemainingResources (resources, resourceStates) {
-  // resourcesState is array of completed booleans
-  const resourceAndStateTuples = zip(resources, resourceStates)
-  return resourceAndStateTuples
-    .filter(([, s]) => !s)
-    .map(([r]) => r)
-}
-
-function createResource$ (deps, resource) {
+function createResource (deps, resource) {
   const prefix = extractPrefix(resource)
   switch (prefix) {
     case 'https-get:':
     case 'http-get:':
     case 'https:':
     case 'http:':
-      return createHTTP$(deps, resource)
-    case 'tcp:':
-      return createTCP$(deps, resource)
-    case 'socket:':
-      return createSocket$(deps, resource)
+      return createHTTPResource(deps, resource)
+    // case 'tcp:':
+    //   return createTCP$(deps, resource)
+    // case 'socket:':
+    //   return createSocket$(deps, resource)
+    // default:
+    //   return createFileResource$(deps, resource)
     default:
-      return createFileResource$(deps, resource)
+      return null
   }
-}
-
-function createFileResource$ (
-  {
-    validatedOpts: {
-      delay,
-      interval,
-      reverse,
-      simultaneous,
-      window: stabilityWindow
-    },
-    output
-  },
-  resource
-) {
-  const filePath = extractPath(resource)
-  const checkOperator = reverse
-    ? map(size => size === -1) // check that file does not exist
-    : scan(
-      // check that file exists and the size is stable
-      (acc, x) => {
-        if (x > -1) {
-          const { size, t } = acc
-          const now = Date.now()
-          if (size !== -1 && x === size) {
-            if (now >= t + stabilityWindow) {
-              // file size has stabilized
-              output(`  file stabilized at size:${size} file:${filePath}`)
-              return true
-            }
-            output(
-              `  file exists, checking for size change during stability window, size:${size} file:${filePath}`
-            )
-            return acc // return acc unchanged, just waiting to pass stability window
-          }
-          output(
-            `  file exists, checking for size changes, size:${x} file:${filePath}`
-          )
-          return { size: x, t: now } // update acc with new value and timestamp
-        }
-        return acc
-      },
-      { size: -1, t: Date.now() }
-    )
-
-  return timer(delay, interval).pipe(
-    mergeMap(() => {
-      output(`checking file stat for file:${filePath} ...`)
-      return from(getFileSize(filePath))
-    }, simultaneous),
-    checkOperator,
-    map(x => (x.constructor !== Boolean ? false : x)),
-    startWith(false),
-    distinctUntilChanged(),
-    take(2)
-  )
 }
 
 function extractPath (resource) {
@@ -465,161 +264,7 @@ async function getFileSize (filePath) {
   }
 }
 
-function createHTTP$ ({ validatedOpts, output }, resource) {
-  const {
-    delay,
-    followRedirect,
-    httpTimeout: timeout,
-    interval,
-    proxy,
-    reverse,
-    simultaneous,
-    strictSSL: rejectUnauthorized
-  } = validatedOpts
-  const method = HTTP_GET_RE.test(resource) ? 'get' : 'head'
-  const url = resource.replace('-get:', ':')
-  const matchHttpUnixSocket = HTTP_UNIX_RE.exec(url) // http://unix:/sock:/url
-  const urlSocketOptions = matchHttpUnixSocket
-    ? { socketPath: matchHttpUnixSocket[1], url: matchHttpUnixSocket[2] }
-    : { url }
-  const socketPathDesc = urlSocketOptions.socketPath
-    ? `socketPath:${urlSocketOptions.socketPath}`
-    : ''
-  const httpOptions = {
-    ...pick(['auth', 'headers', 'validateStatus'], validatedOpts),
-    httpsAgent: new https.Agent({
-      rejectUnauthorized,
-      ...pick(['ca', 'cert', 'key', 'passphrase'], validatedOpts)
-    }),
-    ...(followRedirect ? {} : { maxRedirects: 0 }), // defaults to 5 (enabled)
-    proxy, // can be undefined, false, or object
-    ...(timeout && { timeout }),
-    ...urlSocketOptions,
-    method
-    // by default it provides full response object
-    // validStatus is 2xx unless followRedirect is true (default)
-  }
-  const checkFn = reverse ? negateAsync(httpCallSucceeds) : httpCallSucceeds
-  return timer(delay, interval).pipe(
-    mergeMap(() => {
-      output(
-        `making HTTP(S) ${method} request to ${socketPathDesc} url:${urlSocketOptions.url} ...`
-      )
-      return from(checkFn(output, httpOptions))
-    }, simultaneous),
-    startWith(false),
-    distinctUntilChanged(),
-    take(2)
-  )
-}
-
-async function httpCallSucceeds (output, httpOptions) {
-  try {
-    const result = await axios(httpOptions)
-    output(
-      `  HTTP(S) result for ${httpOptions.url}: ${util.inspect(
-        pick(['status', 'statusText', 'headers', 'data'], result)
-      )}`
-    )
-    return true
-  } catch (err) {
-    output(`  HTTP(S) error for ${httpOptions.url} ${err.toString()}`)
-    return false
-  }
-}
-
-function createTCP$ (
-  {
-    validatedOpts: { delay, interval, tcpTimeout, reverse, simultaneous },
-    output
-  },
-  resource
-) {
-  const tcpPath = extractPath(resource)
-  const checkFn = reverse ? negateAsync(tcpExists) : tcpExists
-  return timer(delay, interval).pipe(
-    mergeMap(() => {
-      output(`making TCP connection to ${tcpPath} ...`)
-      return from(checkFn(output, tcpPath, tcpTimeout))
-    }, simultaneous),
-    startWith(false),
-    distinctUntilChanged(),
-    take(2)
-  )
-}
-
-async function tcpExists (output, tcpPath, tcpTimeout) {
-  const [, , /* full, hostWithColon */ hostMatched, port] = HOST_PORT_RE.exec(
-    tcpPath
-  )
-  const host = hostMatched || 'localhost'
-  return new Promise(resolve => {
-    const conn = net
-      .connect(port, host)
-      .on('error', err => {
-        output(
-          `  error connecting to TCP host:${host} port:${port} ${err.toString()}`
-        )
-        resolve(false)
-      })
-      .on('timeout', () => {
-        output(
-          `  timed out connecting to TCP host:${host} port:${port} tcpTimeout:${tcpTimeout}ms`
-        )
-        conn.end()
-        resolve(false)
-      })
-      .on('connect', () => {
-        output(`  TCP connection successful to host:${host} port:${port}`)
-        conn.end()
-        resolve(true)
-      })
-    conn.setTimeout(tcpTimeout)
-  })
-}
-
-function createSocket$ (
-  { validatedOpts: { delay, interval, reverse, simultaneous }, output },
-  resource
-) {
-  const socketPath = extractPath(resource)
-  const checkFn = reverse ? negateAsync(socketExists) : socketExists
-  return timer(delay, interval).pipe(
-    mergeMap(() => {
-      output(`making socket connection to ${socketPath} ...`)
-      return from(checkFn(output, socketPath))
-    }, simultaneous),
-    startWith(false),
-    distinctUntilChanged(),
-    take(2)
-  )
-}
-
-async function socketExists (output, socketPath) {
-  return new Promise(resolve => {
-    const conn = net
-      .connect(socketPath)
-      .on('error', err => {
-        output(
-          `  error connecting to socket socket:${socketPath} ${err.toString()}`
-        )
-        resolve(false)
-      })
-      .on('connect', () => {
-        output(`  connected to socket:${socketPath}`)
-        conn.end()
-        resolve(true)
-      })
-  })
-}
-
-function negateAsync (asyncFn) {
-  return async function (...args) {
-    return !(await asyncFn(...args))
-  }
-}
-
 // Add support for multiple export combos
-module.exports = waitOn
-module.exports.waitOn = waitOn
-module.exports.default = waitOn
+module.exports = WaitOn
+module.exports.WaitOn = WaitOn
+module.exports.default = WaitOn
