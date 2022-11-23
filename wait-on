@@ -2,10 +2,12 @@
 
 'use strict'
 
-const fs = require('fs')
-const path = require('path')
+const fs = require('node:fs')
+const path = require('node:path')
 
 const minimist = require('minimist')
+const { Signale } = require('signale')
+
 const waitOn = require('.')
 
 const minimistOpts = {
@@ -37,6 +39,8 @@ const waitOnOpts = [
   'window'
 ]
 
+const logger = new Signale({ scope: 'wait-on' })
+
 ;(async () => {
   const argv = minimist(process.argv.slice(2), minimistOpts)
   // if a js/json configuration file is provided require it
@@ -61,12 +65,50 @@ const waitOnOpts = [
       }
     }
 
-    try {
-      await waitOn(configOpts)
-      process.exit(0)
-    } catch (error) {
-      console.error(error)
-      process.exit(1)
+    let exitCode = 0
+    const eventLogger = logger.scope('wait-on:events')
+
+    if (configOpts.verbose === false) {
+      logger.disable()
+      eventLogger.disable()
     }
+
+    logger.start('wait-on resources')
+
+    try {
+      const result = await waitOn({
+        ...configOpts,
+        events: {
+          onInvalidResource: resource => {
+            eventLogger.error(`Invalid resource: ${resource}`)
+          },
+          onResourceTimeout: resource => {
+            eventLogger.error(`Resource timeout: ${resource}`)
+          },
+          onResourceResponse: (resource, reason) => {
+            eventLogger.warn(`Resource response: ${resource} (${reason})`)
+          },
+          onResourceError: (resource, err) => {
+            eventLogger.error(`Resource error: ${resource} (${err.message})`)
+          },
+          onResourceDone: resource => {
+            eventLogger.complete(`Resource done: ${resource}`)
+          }
+        }
+      })
+
+      if (result) {
+        logger.success('Done!')
+        exitCode = 0
+      } else {
+        logger.error('Resources timed out')
+        exitCode = 1
+      }
+    } catch (error) {
+      logger.error(error)
+      exitCode = 1
+    }
+
+    process.exit(exitCode)
   }
 })()
