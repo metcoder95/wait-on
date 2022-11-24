@@ -14,6 +14,7 @@ const {
   parseAjvErrors
 } = require('./lib/validate')
 const { createHTTPResource } = require('./lib/http')
+const { createTCPResource } = require('./lib/tcp')
 
 const fstat = promisify(fs.stat)
 const PREFIX_RE = /^((https?-get|https?|tcp|socket|file):)(.+)$/
@@ -92,7 +93,6 @@ async function waitOnImpl (opts) {
 
   for (const resource of incomingResources) {
     const parsedResource = createResource(waitOnOptions, resource)
-
     if (parsedResource != null) {
       resources.push(parsedResource)
     } else {
@@ -221,15 +221,15 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
 }
 
 function createResource (deps, resource) {
-  const prefix = extractPrefix(resource)
-  switch (prefix) {
+  const protocol = new URL(resource).protocol
+  switch (protocol) {
     case 'https-get:':
     case 'http-get:':
     case 'https:':
     case 'http:':
       return createHTTPResource(deps, resource)
-    // case 'tcp:':
-    //   return createTCP$(deps, resource)
+    case 'tcp:':
+      return createTCPResource(deps, resource)
     // case 'socket:':
     //   return createSocket$(deps, resource)
     // default:
@@ -239,30 +239,14 @@ function createResource (deps, resource) {
   }
 }
 
-function extractPath (resource) {
-  const m = PREFIX_RE.exec(resource)
-  if (m) {
-    return m[3]
-  }
-  return resource
-}
-
-function extractPrefix (resource) {
-  const m = PREFIX_RE.exec(resource)
-  if (m) {
-    return m[1]
-  }
-  return ''
-}
-
-async function getFileSize (filePath) {
-  try {
-    const { size } = await fstat(filePath)
-    return size
-  } catch (err) {
-    return -1
-  }
-}
+// async function getFileSize (filePath) {
+//   try {
+//     const { size } = await fstat(filePath)
+//     return size
+//   } catch (err) {
+//     return -1
+//   }
+// }
 
 // Add support for multiple export combos
 module.exports = WaitOn
