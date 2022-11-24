@@ -73,7 +73,7 @@ const logger = new Signale({ scope: 'wait-on' })
       eventLogger.disable()
     }
 
-    logger.start('wait-on resources')
+    logger.start('Waiting for resources')
 
     try {
       const result = await waitOn({
@@ -89,7 +89,7 @@ const logger = new Signale({ scope: 'wait-on' })
             eventLogger.warn(`Resource response: ${resource} (${reason})`)
           },
           onResourceError: (resource, err) => {
-            eventLogger.error(`Resource error: ${resource} (${err.message})`)
+            eventLogger.error(`Resource error: ${resource} (${err.reason})`)
           },
           onResourceDone: resource => {
             eventLogger.complete(`Resource done: ${resource}`)
@@ -105,7 +105,7 @@ const logger = new Signale({ scope: 'wait-on' })
         exitCode = 1
       }
     } catch (error) {
-      logger.error(error)
+      logger.error('Initialization failed: ' + error.message)
       exitCode = 1
     }
 

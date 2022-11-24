@@ -17,7 +17,7 @@ const { createHTTPResource } = require('./lib/http')
 const { createTCPResource } = require('./lib/tcp')
 
 const fstat = promisify(fs.stat)
-const PREFIX_RE = /^((https?-get|https?|tcp|socket|file):)(.+)$/
+// const PREFIX_RE = /^((https?-get|https?|tcp|socket|file):)(.+)$/
 
 /**
    Waits for resources to become available before calling callback
@@ -100,10 +100,14 @@ async function waitOnImpl (opts) {
     }
   }
 
-  if (events?.onInvalidResource != null) {
+  if (invalidResources.length > 0 && events?.onInvalidResource != null) {
     for (const resource of invalidResources) {
       events.onInvalidResource(resource)
     }
+  }
+
+  if (resources.length === 0) {
+    throw new Error(`No valid resources provided - ${resources.join(', ')}`)
   }
 
   const pool = new AsyncPool({
@@ -119,7 +123,6 @@ async function waitOnImpl (opts) {
   }
 
   for (const resource of resources) {
-    const promise = pool.run(resource.exec.bind(null, controller.signal))
     const { onResponse, onError } = handleResponse({
       resource,
       pool,
@@ -128,7 +131,7 @@ async function waitOnImpl (opts) {
       state: globalState
     })
 
-    // TODO: validate hooks before scheduling
+    const promise = pool.run(resource.exec.bind(null, controller.signal))
     promise.then(onResponse, onError)
   }
 
@@ -150,8 +153,9 @@ async function waitOnImpl (opts) {
       }
     }
 
-    if (unfinished && !timedout) continue
-    else {
+    if (unfinished && !timedout) {
+      continue
+    } else {
       timerController.abort()
       success = !timedout
       break
@@ -199,14 +203,6 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
       return
     }
 
-    return setTimeout(interval)
-      .then(() => pool.run(resource.exec.bind(null, signal)))
-      .then(onResponse, onError)
-  }
-
-  function onError (err) {
-    events?.onResourceError?.(resource.name, err)
-
     if (signal.aborted) {
       events?.onResourceTimeout?.(resource.name, new Error('Request timed out'))
       state.set(resource.name, true)
@@ -217,6 +213,17 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
     return setTimeout(interval)
       .then(() => pool.run(resource.exec.bind(null, signal)))
       .then(onResponse, onError)
+  }
+
+  function onError (err) {
+    if (signal.aborted) {
+      events?.onResourceTimeout?.(resource.name, new Error('Request timed out'))
+      state.set(resource.name, true)
+
+      return
+    }
+
+    events?.onResourceError?.(resource.name, err)
   }
 }
 

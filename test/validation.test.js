@@ -37,17 +37,12 @@ test('Wait-On#CLI', context => {
   context.plan(1)
 
   context.test('Should exit with code 1', async t => {
-    t.plan(2)
+    t.plan(1)
 
     try {
       await exec('./wait-on')
     } catch (err) {
       t.equal(err.code, 1, 'Should exit with code 1')
-      t.match(
-        err.stderr,
-        "Invalid options: must have required property 'resources'",
-        'Should not have stderr'
-      )
     }
   })
 })
