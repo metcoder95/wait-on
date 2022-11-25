@@ -15,6 +15,7 @@ const {
 } = require('./lib/validate')
 const { createHTTPResource } = require('./lib/http')
 const { createTCPResource } = require('./lib/tcp')
+const { createSocketResource } = require('./lib/socket')
 
 const fstat = promisify(fs.stat)
 // const PREFIX_RE = /^((https?-get|https?|tcp|socket|file):)(.+)$/
@@ -61,7 +62,7 @@ function WaitOn (opts, cb) {
 
 async function waitOnImpl (opts) {
   // TODO: deepclone instead of shallow
-  const waitOnOptions = Object.assign({}, opts)
+  const waitOnOptions = Object.assign(Object.create(null), opts)
   const validResult = validateOptions(waitOnOptions)
   if (!validResult) {
     const parsedError = parseAjvErrors(validateOptions.errors)
@@ -237,10 +238,11 @@ function createResource (deps, resource) {
       return createHTTPResource(deps, resource)
     case 'tcp:':
       return createTCPResource(deps, resource)
-    // case 'socket:':
-    //   return createSocket$(deps, resource)
-    // default:
-    //   return createFileResource$(deps, resource)
+    case 'socket:':
+      return createSocketResource(deps, resource)
+    case 'file:':
+    // return createFileResource$(deps, resource)
+      return null
     default:
       return null
   }
