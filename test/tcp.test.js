@@ -87,16 +87,7 @@ test('Wait-On#TCP', context => {
   })
 
   context.test('Basic TCP with timeout', async t => {
-    const server = createServer({
-      keepAlive: false
-    })
-
-    server.on('connection', socket => {
-      socket.end('Hello World!')
-    })
-
     t.plan(1)
-    t.teardown(server.close.bind(server))
 
     const promise = waitOn({
       resources: ['tcp://localhost:4004'],
