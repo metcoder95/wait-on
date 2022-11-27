@@ -90,8 +90,8 @@ test('Wait-On#TCP', context => {
     t.plan(1)
 
     const promise = waitOn({
-      resources: ['tcp://localhost:4004'],
-      timeout: 1000
+      resources: ['tcp://nonexistent.com'],
+      timeout: 500
     })
 
     const result = await promise
