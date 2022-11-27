@@ -1,9 +1,8 @@
 'use strict'
 
-const fs = require('node:fs')
-const { promisify } = require('node:util')
 const { once } = require('node:events')
 const { setTimeout } = require('node:timers/promises')
+const { join, isAbsolute } = require('node:path')
 
 const { AsyncPool } = require('@metcoder95/tiny-pool')
 
@@ -16,9 +15,7 @@ const {
 const { createHTTPResource } = require('./lib/http')
 const { createTCPResource } = require('./lib/tcp')
 const { createSocketResource } = require('./lib/socket')
-
-const fstat = promisify(fs.stat)
-// const PREFIX_RE = /^((https?-get|https?|tcp|socket|file):)(.+)$/
+const { createFileResource } = require('./lib/file')
 
 /**
    Waits for resources to become available before calling callback
@@ -229,7 +226,19 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
 }
 
 function createResource (deps, resource) {
-  const protocol = new URL(resource).protocol
+  let protocol
+  // TODO: refactor resource to use URL instance instead
+  try {
+    protocol = new URL(resource).protocol
+  } catch {
+    // Not a valid URL meaning that we fallback into file protocol
+    const parsed = new URL(
+      `file:/${isAbsolute(resource) ? resource : join(process.cwd(), resource)}`
+    )
+    protocol = parsed.protocol
+    resource = parsed.href
+  }
+
   switch (protocol) {
     case 'https-get:':
     case 'http-get:':
@@ -241,21 +250,10 @@ function createResource (deps, resource) {
     case 'socket:':
       return createSocketResource(deps, resource)
     case 'file:':
-    // return createFileResource$(deps, resource)
-      return null
     default:
-      return null
+      return createFileResource(deps, resource)
   }
 }
-
-// async function getFileSize (filePath) {
-//   try {
-//     const { size } = await fstat(filePath)
-//     return size
-//   } catch (err) {
-//     return -1
-//   }
-// }
 
 // Add support for multiple export combos
 module.exports = WaitOn
