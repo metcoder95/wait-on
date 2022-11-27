@@ -11,7 +11,7 @@ const { Signale } = require('signale')
 const waitOn = require('.')
 
 const minimistOpts = {
-  string: ['c', 'd', 'i', 's', 't', 'w', 'httpTimeout', 'tcpTimeout'],
+  string: ['c', 'httpTimeout', 'tcpTimeout'],
   boolean: ['h', 'l', 'r', 'v'],
   alias: {
     c: 'config',
