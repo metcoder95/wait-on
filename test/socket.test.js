@@ -42,7 +42,7 @@ test('Wait-On#Socket', context => {
     t.equal(result, true)
   })
 
-  context.test('Basic TCP - with initial delay', async t => {
+  context.test('Basic Socket - with initial delay', async t => {
     const tmpdir = os.tmpdir()
     const socketPath = path.join(tmpdir, 'sock')
     const server = createServer((_, res) => {
@@ -69,7 +69,7 @@ test('Wait-On#Socket', context => {
     t.equal(result, true)
   })
 
-  context.test('Basic TCP - immediate connect', async t => {
+  context.test('Basic Socket - immediate connect', async t => {
     const tmpdir = os.tmpdir()
     const socketPath = path.join(tmpdir, 'sock')
     const server = createServer((_, res) => {
@@ -95,7 +95,7 @@ test('Wait-On#Socket', context => {
     t.equal(result, true)
   })
 
-  context.test('Basic TCP with timeout', async t => {
+  context.test('Basic Socket with timeout', async t => {
     const tmpdir = os.tmpdir()
     const socketPath = path.join(tmpdir, 'sock')
 
