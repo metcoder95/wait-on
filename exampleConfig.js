@@ -22,4 +22,4 @@ module.exports = {
   },
   // optional default resources if not specified in command args
   resources: ['http://foo/bar', 'http://cat/dog']
-};
+}

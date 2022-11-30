@@ -1,0 +1,114 @@
+#!/usr/bin/env node
+
+'use strict'
+
+const fs = require('node:fs')
+const path = require('node:path')
+
+const minimist = require('minimist')
+const { Signale } = require('signale')
+
+const waitOn = require('.')
+
+const minimistOpts = {
+  string: ['c', 'httpTimeout', 'tcpTimeout'],
+  boolean: ['h', 'l', 'r', 'v'],
+  alias: {
+    c: 'config',
+    d: 'delay',
+    i: 'interval',
+    l: 'log',
+    r: 'reverse',
+    s: 'simultaneous',
+    t: 'timeout',
+    v: 'verbose',
+    w: 'window',
+    h: 'help'
+  }
+}
+const waitOnOpts = [
+  'delay',
+  'httpTimeout',
+  'interval',
+  'log',
+  'reverse',
+  'simultaneous',
+  'timeout',
+  'tcpTimeout',
+  'verbose',
+  'window'
+]
+
+const logger = new Signale({ scope: 'wait-on' })
+
+;(async () => {
+  const argv = minimist(process.argv.slice(2), minimistOpts)
+  // if a js/json configuration file is provided require it
+  const configOpts =
+    argv.config != null ? require(path.resolve(argv.config)) : {}
+
+  if (argv.help) {
+    // help
+    const help = fs.readFileSync(path.join(__dirname, 'help.txt'), 'utf8')
+    console.log(help)
+    process.exit(0)
+  } else {
+    // if resources are present in the command line then they take
+    // precedence over those in the config file.
+    if (argv._.length > 0) {
+      configOpts.resources = argv._
+    }
+
+    for (const optName of waitOnOpts) {
+      if (argv[optName] != null) {
+        configOpts[optName] = argv[optName]
+      }
+    }
+
+    let exitCode = 0
+    const eventLogger = logger.scope('wait-on:events')
+
+    if (configOpts.verbose === false) {
+      logger.disable()
+      eventLogger.disable()
+    }
+
+    logger.start('Waiting for resources')
+
+    try {
+      const result = await waitOn({
+        ...configOpts,
+        events: {
+          onInvalidResource: resource => {
+            eventLogger.error(`Invalid resource: ${resource}`)
+          },
+          onResourceTimeout: resource => {
+            eventLogger.error(`Resource timeout: ${resource}`)
+          },
+          onResourceResponse: (resource, reason) => {
+            eventLogger.warn(`Resource response: ${resource} (${reason})`)
+          },
+          onResourceError: (resource, err) => {
+            eventLogger.error(`Resource error: ${resource} (${err.reason})`)
+          },
+          onResourceDone: resource => {
+            eventLogger.complete(`Resource done: ${resource}`)
+          }
+        }
+      })
+
+      if (result) {
+        logger.success('Done!')
+        exitCode = 0
+      } else {
+        logger.error('Resources timed out')
+        exitCode = 1
+      }
+    } catch (error) {
+      logger.error('Initialization failed: ' + error.message)
+      exitCode = 1
+    }
+
+    process.exit(exitCode)
+  }
+})()
