@@ -6,6 +6,8 @@ const { test } = require('tap')
 
 const waitOn = require('..')
 
+function noop () {}
+
 test('Wait-On#TCP', context => {
   context.plan(4)
 
@@ -15,10 +17,12 @@ test('Wait-On#TCP', context => {
     })
 
     server.on('connection', socket => {
-      socket.end('Hello World!')
+      t.ok(socket)
     })
 
-    t.plan(1)
+    server.on('error', noop)
+
+    t.plan(2)
     t.teardown(server.close.bind(server))
 
     const promise = waitOn({
@@ -43,10 +47,12 @@ test('Wait-On#TCP', context => {
     })
 
     server.on('connection', socket => {
-      socket.end('Hello World!')
+      t.ok(socket)
     })
 
-    t.plan(1)
+    server.on('error', noop)
+
+    t.plan(2)
     t.teardown(server.close.bind(server))
 
     const promise = waitOn({
@@ -69,10 +75,12 @@ test('Wait-On#TCP', context => {
     })
 
     server.on('connection', socket => {
-      socket.end('Hello World!')
+      t.ok(socket)
     })
 
-    t.plan(1)
+    server.on('error', noop)
+
+    t.plan(2)
     t.teardown(server.close.bind(server))
 
     await new Promise(resolve => {
@@ -90,8 +98,9 @@ test('Wait-On#TCP', context => {
     t.plan(1)
 
     const promise = waitOn({
-      resources: ['tcp://nonexistent.xyz'],
-      timeout: 500
+      resources: ['tcp://127.0.0.1:5030'],
+      timeout: 500,
+      interval: 1000
     })
 
     const result = await promise
