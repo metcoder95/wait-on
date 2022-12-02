@@ -130,7 +130,7 @@ async function waitOnImpl (opts) {
     })
 
     const promise = pool.run(resource.exec.bind(null, controller.signal))
-    promise.then(onResponse, onError)
+    promise.then(onResponse, onError).catch(onError)
   }
 
   const timer = timedout(timeout, controller, timerController.signal)
@@ -174,7 +174,11 @@ async function timedout (timeout, controller, signal) {
 }
 
 function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
-  const { interval, events, reverse } = waitOnOptions
+  const { interval, events, reverse, window } = waitOnOptions
+  const hasStabilityWindow = window != null && window > 0
+  let isRunningStabilityWindow = false
+  /** @type {boolean} */
+  let isStable
 
   state.set(resource.name, false)
 
@@ -185,8 +189,21 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
 
   function onResponse ({ successfull, reason }) {
     // All done
-    if ((reverse && !successfull) || (!reverse && successfull)) {
+    const isSuccessful = (reverse && !successfull) || (!reverse && successfull)
+    isStable = isRunningStabilityWindow ? isSuccessful : !hasStabilityWindow
+
+    if (isSuccessful && isStable) {
       events?.onResourceDone?.(resource.name)
+      state.set(resource.name, true)
+
+      return
+    }
+
+    if (signal.aborted) {
+      events?.onResourceTimeout?.(
+        resource.name,
+        new Error('Stability check timed out')
+      )
       state.set(resource.name, true)
 
       return
@@ -194,34 +211,29 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
 
     events?.onResourceResponse?.(resource.name, reason)
 
-    if (signal.aborted) {
-      events?.onResourceError?.(resource.name, new Error('Request timed out'))
-      state.set(resource.name, true)
-
-      return
+    /**  @type {Promise<void>} */
+    let timerPromise
+    if (hasStabilityWindow && isSuccessful) {
+      isRunningStabilityWindow = true
+      timerPromise = setTimeout(window, null, { signal })
+    } else {
+      isRunningStabilityWindow = false
+      timerPromise = setTimeout(interval, null, { signal })
     }
 
-    if (signal.aborted) {
-      events?.onResourceTimeout?.(resource.name, new Error('Request timed out'))
-      state.set(resource.name, true)
-
-      return
-    }
-
-    return setTimeout(interval)
+    return timerPromise
       .then(() => pool.run(resource.exec.bind(null, signal)))
-      .then(onResponse, onError)
+      .then(onResponse, onError).catch(onError)
   }
 
   function onError (err) {
     if (signal.aborted) {
       events?.onResourceTimeout?.(resource.name, new Error('Request timed out'))
-      state.set(resource.name, true)
-
-      return
+    } else {
+      events?.onResourceError?.(resource.name, err)
     }
 
-    events?.onResourceError?.(resource.name, err)
+    state.set(resource.name, true)
   }
 }
 

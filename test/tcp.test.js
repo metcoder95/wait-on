@@ -16,13 +16,11 @@ test('Wait-On#TCP', context => {
       keepAlive: false
     })
 
-    server.on('connection', socket => {
-      t.ok(socket)
-    })
+    server.on('connection', noop)
 
     server.on('error', noop)
 
-    t.plan(2)
+    t.plan(1)
     t.teardown(server.close.bind(server))
 
     const promise = waitOn({
@@ -46,13 +44,11 @@ test('Wait-On#TCP', context => {
       keepAlive: false
     })
 
-    server.on('connection', socket => {
-      t.ok(socket)
-    })
+    server.on('connection', noop)
 
     server.on('error', noop)
 
-    t.plan(2)
+    t.plan(1)
     t.teardown(server.close.bind(server))
 
     const promise = waitOn({
@@ -74,13 +70,11 @@ test('Wait-On#TCP', context => {
       keepAlive: false
     })
 
-    server.on('connection', socket => {
-      t.ok(socket)
-    })
+    server.on('connection', noop)
 
     server.on('error', noop)
 
-    t.plan(2)
+    t.plan(1)
     t.teardown(server.close.bind(server))
 
     await new Promise(resolve => {
