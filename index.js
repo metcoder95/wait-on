@@ -130,7 +130,7 @@ async function waitOnImpl (opts) {
     })
 
     const promise = pool.run(resource.exec.bind(null, controller.signal))
-    promise.then(onResponse, onError)
+    promise.then(onResponse, onError).catch(onError)
   }
 
   const timer = timedout(timeout, controller, timerController.signal)
@@ -209,9 +209,7 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
       return
     }
 
-    if (signal.aborted) {
-      events?.onResourceTimeout?.(resource.name, new Error('Request timed out'))
-      state.set(resource.name, true)
+    events?.onResourceResponse?.(resource.name, reason)
 
     /**  @type {Promise<void>} */
     let timerPromise
@@ -225,18 +223,17 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
 
     return timerPromise
       .then(() => pool.run(resource.exec.bind(null, signal)))
-      .then(onResponse, onError)
+      .then(onResponse, onError).catch(onError)
   }
 
   function onError (err) {
     if (signal.aborted) {
       events?.onResourceTimeout?.(resource.name, new Error('Request timed out'))
-      state.set(resource.name, true)
-
-      return
+    } else {
+      events?.onResourceError?.(resource.name, err)
     }
 
-    events?.onResourceError?.(resource.name, err)
+    state.set(resource.name, true)
   }
 }
 
