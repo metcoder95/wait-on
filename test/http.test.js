@@ -6,8 +6,8 @@ const { test } = require('tap')
 
 const waitOn = require('..')
 
-test('Wait-On#HTTP', context => {
-  context.plan(4)
+test('Wait-On#HTTP', { only: true }, context => {
+  context.plan(6)
 
   context.test('Basic HTTP', t => {
     const server = createServer((req, res) => {
@@ -79,6 +79,57 @@ test('Wait-On#HTTP', context => {
 
       t.equal(result, true)
     })
+  })
+
+  context.test('Basic HTTP - fallback to ipv6 if ipv4 not available on localhost', async t => {
+    const server = createServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/plain' })
+      res.end('Hello World')
+    })
+
+    t.plan(1)
+
+    t.teardown(server.close.bind(server))
+
+    await new Promise((resolve, reject) => {
+      server.listen({ host: '::1', port: 3006 }, e => {
+        if (e != null) reject(e)
+        else resolve()
+      })
+    })
+
+    const result = await waitOn({
+      resources: ['http://localhost:3006']
+    })
+
+    t.equal(result, true)
+  })
+
+  context.test('Basic HTTP - fallback to ipv4 if ipv6 not available on localhost', async t => {
+    const server = createServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/plain' })
+      res.end('Hello World')
+    })
+
+    t.plan(1)
+
+    t.teardown(server.close.bind(server))
+
+    const promise = waitOn({
+      resources: ['http://localhost:3007']
+    })
+
+    await setTimeout(1000)
+
+    await new Promise((resolve, reject) => {
+      server.listen({ host: '::1', port: 3007 }, e => {
+        if (e != null) reject(e)
+        else resolve()
+      })
+    })
+
+    const result = await promise
+    t.equal(result, true)
   })
 
   context.test('Basic HTTP with timeout', async t => {
