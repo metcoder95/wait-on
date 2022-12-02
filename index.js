@@ -174,7 +174,11 @@ async function timedout (timeout, controller, signal) {
 }
 
 function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
-  const { interval, events, reverse } = waitOnOptions
+  const { interval, events, reverse, window } = waitOnOptions
+  const hasStabilityWindow = window != null && window > 0
+  let isRunningStabilityWindow = false
+  /** @type {boolean} */
+  let isStable
 
   state.set(resource.name, false)
 
@@ -185,17 +189,21 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
 
   function onResponse ({ successfull, reason }) {
     // All done
-    if ((reverse && !successfull) || (!reverse && successfull)) {
+    const isSuccessful = (reverse && !successfull) || (!reverse && successfull)
+    isStable = isRunningStabilityWindow ? isSuccessful : !hasStabilityWindow
+
+    if (isSuccessful && isStable) {
       events?.onResourceDone?.(resource.name)
       state.set(resource.name, true)
 
       return
     }
 
-    events?.onResourceResponse?.(resource.name, reason)
-
     if (signal.aborted) {
-      events?.onResourceError?.(resource.name, new Error('Request timed out'))
+      events?.onResourceTimeout?.(
+        resource.name,
+        new Error('Stability check timed out')
+      )
       state.set(resource.name, true)
 
       return
@@ -205,10 +213,17 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
       events?.onResourceTimeout?.(resource.name, new Error('Request timed out'))
       state.set(resource.name, true)
 
-      return
+    /**  @type {Promise<void>} */
+    let timerPromise
+    if (hasStabilityWindow && isSuccessful) {
+      isRunningStabilityWindow = true
+      timerPromise = setTimeout(window, null, { signal })
+    } else {
+      isRunningStabilityWindow = false
+      timerPromise = setTimeout(interval, null, { signal })
     }
 
-    return setTimeout(interval)
+    return timerPromise
       .then(() => pool.run(resource.exec.bind(null, signal)))
       .then(onResponse, onError)
   }
