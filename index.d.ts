@@ -45,7 +45,7 @@ type WaitOnResourcesType =
   | `tcp:${string}`
   | `socket:${string}`;
 
-// type WaitOnValidateStatusCallback = (status: number) => boolean;
+type WaitOnValidateStatusCallback = (status: number) => boolean;
 
 type WaitOnOptions = {
   resources: WaitOnResourcesType[];
@@ -61,6 +61,7 @@ type WaitOnOptions = {
     maxRedirects?: number;
     followRedirect?: boolean;
     headers?: Record<string, string | number>;
+    validateStatus?: WaitOnValidateStatusCallback
   };
   socket?: {
     timeout?: number;
