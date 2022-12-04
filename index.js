@@ -51,6 +51,7 @@ async function waitOnImpl (opts) {
 
   const {
     resources: incomingResources,
+    throwOnInvalidResource,
     timeout,
     simultaneous,
     events
@@ -68,6 +69,10 @@ async function waitOnImpl (opts) {
   }
 
   if (invalidResources.length > 0 && events?.onInvalidResource != null) {
+    if (throwOnInvalidResource) {
+      throw new Error(`Invalid resources: ${invalidResources.join(', ')}`)
+    }
+
     for (const resource of invalidResources) {
       events.onInvalidResource(resource)
     }
@@ -192,7 +197,8 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
 
     return timerPromise
       .then(() => pool.run(resource.exec.bind(null, signal)))
-      .then(onResponse, onError).catch(onError)
+      .then(onResponse, onError)
+      .catch(onError)
   }
 
   function onError (err) {
