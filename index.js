@@ -20,7 +20,9 @@ const { createFileResource } = require('./lib/file')
 // Main function
 function WaitOn (opts, cb) {
   if (cb != null && cb.constructor.name === 'Function') {
-    waitOnImpl(opts).then(cb, cb)
+    waitOnImpl(opts).then(result => {
+      cb(null, result)
+    }, cb)
   } else {
     return waitOnImpl(opts)
   }

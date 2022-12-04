@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { ProxyAgent } from 'undici';
 
-type WaitOnCallback = (err?: Error) => unknown;
+type WaitOnCallback = (err?: Error, result: boolean) => unknown;
 
 declare function WaitOn(
   options: WaitOnOptions,
