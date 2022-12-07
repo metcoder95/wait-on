@@ -153,14 +153,12 @@ test('Wait-On#HTTP', { only: true }, context => {
 
       const server4 = createServer((req, res) => {
         ipv4Called = true
-        console.log('called - ipv4')
         res.writeHead(500, { 'Content-Type': 'text/plain' })
         res.end('oops!')
       })
 
       const server6 = createServer((req, res) => {
         ipv6Called = true
-        console.log('called - ipv6')
         res.writeHead(200, { 'Content-Type': 'text/plain' })
         res.end('Hello World')
       })
