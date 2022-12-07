@@ -9,13 +9,15 @@ const waitOn = require('..')
 test('Wait-On#HTTP', { only: true }, context => {
   context.plan(7)
 
-  context.test('Basic HTTP', t => {
-    const server = createServer((req, res) => {
+  context.test('Basic HTTP', async t => {
+    let called = false
+    const server = createServer((_req, res) => {
+      called = true
       res.writeHead(200, { 'Content-Type': 'text/plain' })
       res.end('Hello World')
     })
 
-    t.plan(1)
+    t.plan(2)
 
     t.teardown(server.close.bind(server))
 
@@ -23,25 +25,31 @@ test('Wait-On#HTTP', { only: true }, context => {
       resources: ['http://localhost:3001']
     })
 
-    setTimeout(1500).then(() => {
+    await setTimeout(1500)
+
+    await new Promise((resolve, reject) => {
       server.listen(3001, async e => {
-        if (e != null) t.fail(e.message)
+        if (e != null) reject(e)
 
-        const result = await waiting
-
-        t.equal(result, true)
+        resolve()
       })
     })
+
+    const result = await waiting
+
+    t.ok(called)
+    t.equal(result, true)
   })
 
-  context.test('Basic HTTP - with initial delay', t => {
-    const server = createServer((req, res) => {
+  context.test('Basic HTTP - with initial delay', async t => {
+    let called = false
+    const server = createServer((_req, res) => {
+      called = true
       res.writeHead(200, { 'Content-Type': 'text/plain' })
       res.end('Hello World')
     })
 
-    t.plan(1)
-
+    t.plan(2)
     t.teardown(server.close.bind(server))
 
     const waiting = waitOn({
@@ -49,15 +57,18 @@ test('Wait-On#HTTP', { only: true }, context => {
       delay: 1000
     })
 
-    setTimeout(0).then(() => {
+    await new Promise((resolve, reject) => {
       server.listen(3002, async e => {
-        if (e != null) t.fail(e.message)
+        if (e != null) reject(e)
 
-        const result = await waiting
-
-        t.equal(result, true)
+        resolve()
       })
     })
+
+    const result = await waiting
+
+    t.ok(called)
+    t.equal(result, true)
   })
 
   context.test(
@@ -79,7 +90,6 @@ test('Wait-On#HTTP', { only: true }, context => {
       })
 
       t.plan(4)
-
       t.teardown(server.close.bind(server))
 
       const waiting = waitOn({
@@ -108,51 +118,81 @@ test('Wait-On#HTTP', { only: true }, context => {
     }
   )
 
-  context.test('Basic HTTP - immediate connect', t => {
-    const server = createServer((req, res) => {
+  context.test('Basic HTTP - immediate connect', async t => {
+    let called = false
+    const server = createServer((_req, res) => {
+      called = true
       res.writeHead(200, { 'Content-Type': 'text/plain' })
       res.end('Hello World')
     })
 
-    t.plan(1)
-
+    t.plan(2)
     t.teardown(server.close.bind(server))
 
-    server.listen(3003, async e => {
-      if (e != null) t.fail(e.message)
+    await new Promise((resolve, reject) => {
+      server.listen(3003, async e => {
+        if (e != null) reject(e)
 
-      const result = await waitOn({
-        resources: ['http://localhost:3003']
+        resolve()
       })
-
-      t.equal(result, true)
     })
+
+    const result = await waitOn({
+      resources: ['http://localhost:3003']
+    })
+
+    t.ok(called)
+    t.equal(result, true)
   })
 
   context.test(
     'Basic HTTP - fallback to ipv6 if ipv4 not available on localhost',
     async t => {
-      const server = createServer((req, res) => {
+      let ipv4Called = false
+      let ipv6Called = false
+
+      const server4 = createServer((req, res) => {
+        ipv4Called = true
+        console.log('called - ipv4')
+        res.writeHead(500, { 'Content-Type': 'text/plain' })
+        res.end('oops!')
+      })
+
+      const server6 = createServer((req, res) => {
+        ipv6Called = true
+        console.log('called - ipv6')
         res.writeHead(200, { 'Content-Type': 'text/plain' })
         res.end('Hello World')
       })
 
-      t.plan(1)
+      t.plan(3)
 
-      t.teardown(server.close.bind(server))
+      t.teardown(server4.close.bind(server4))
+      t.teardown(server6.close.bind(server6))
 
       await new Promise((resolve, reject) => {
-        server.listen({ host: '::1', port: 3006 }, e => {
+        server4.listen({ host: '127.0.0.1', port: 3006 }, e => {
+          if (e != null) reject(e)
+          else resolve()
+        })
+      })
+
+      await new Promise((resolve, reject) => {
+        server6.listen({ host: '::1', port: 3006 }, e => {
           if (e != null) reject(e)
           else resolve()
         })
       })
 
       const result = await waitOn({
-        resources: ['http://localhost:3006']
+        resources: ['http://localhost:3006'],
+        window: 0,
+        interval: 0
       })
 
       t.equal(result, true)
+      t.ok(ipv4Called)
+      t.ok(ipv6Called)
     }
   )
 
