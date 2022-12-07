@@ -62,29 +62,30 @@ test('Wait-On#HTTP', { only: true }, context => {
 
   context.test(
     'Basic HTTP - with initial delay - with custom status code check',
-    t => {
+    async t => {
       let called = false
       let callbackCalled = 0
       const server = createServer((req, res) => {
         if (!called) {
+          called = true
           res.writeHead(404, { 'Content-Type': 'text/plain' })
           res.end('Not Found')
-          called = true
         } else {
           res.writeHead(200, { 'Content-Type': 'text/plain' })
           res.end('Hello World')
+          // Called twice because happy-eyeballs
           t.ok(called)
         }
       })
 
-      t.plan(3)
+      t.plan(4)
 
       t.teardown(server.close.bind(server))
 
       const waiting = waitOn({
         resources: ['http://localhost:3010'],
-        delay: 1000,
-        https: {
+        delay: 2000,
+        http: {
           validateStatus: code => {
             callbackCalled++
             return code === 200
@@ -92,16 +93,18 @@ test('Wait-On#HTTP', { only: true }, context => {
         }
       })
 
-      setTimeout(0).then(() => {
-        server.listen(3002, async e => {
-          if (e != null) t.fail(e.message)
-
-          const result = await waiting
-
-          t.equal(result, true)
-          t.equal(callbackCalled, 2)
+      await setTimeout(500)
+      await new Promise((resolve, reject) => {
+        server.listen(3010, e => {
+          if (e != null) reject(e)
+          resolve()
         })
       })
+
+      const result = await waiting
+
+      t.equal(result, true)
+      t.equal(callbackCalled, 3)
     }
   )
 
