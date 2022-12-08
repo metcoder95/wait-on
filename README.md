@@ -42,7 +42,7 @@ wait-on http://localhost:8000/foo && NEXT_CMD # wait for http 2XX HEAD
 wait-on https://myserver/foo && NEXT_CMD # wait for https 2XX HEAD
 wait-on http-get://localhost:8000/foo && NEXT_CMD # wait for http 2XX GET
 wait-on https-get://myserver/foo && NEXT_CMD # wait for https 2XX GET
-wait-on tcp:4000 && NEXT_CMD # wait for service to listen on a TCP port
+wait-on tcp://localhost:4000 && NEXT_CMD # wait for service to listen on a TCP port
 wait-on socket:/path/mysock # wait for service to listen on domain socket
 wait-on http://unix:/var/SOCKPATH:/a/foo # wait for http HEAD on domain socket
 wait-on http-get://unix:/var/SOCKPATH:/a/foo # wait for http GET on domain socket
@@ -77,7 +77,7 @@ Description:
        https:     - HTTPS HEAD returns 2XX response. ex: https://my/bar
        http-get:  - HTTP GET returns 2XX response. ex: http://m.com:90/foo
        https-get: - HTTPS GET returns 2XX response. ex: https://my/bar
-       tcp:       - TCP port is listening. ex: 1.2.3.4:9000 or foo.com:700
+       tcp:       - TCP port is listening. ex: tcp://localhost:4000 or tcp://foo:7000
        socket:    - Domain Socket is listening. ex: socket:/path/to/sock
                     For http over socket, use http://unix:SOCK_PATH:URL_PATH
                     like http://unix:/path/to/sock:/foo/bar or
