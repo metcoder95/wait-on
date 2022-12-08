@@ -93,8 +93,10 @@ test('Wait-On#TCP', context => {
 
     const promise = waitOn({
       resources: ['tcp://127.0.0.1:5030'],
-      timeout: 500,
-      interval: 1000
+      tcp: {
+        timeout: 500
+      },
+      timeout: 1000
     })
 
     const result = await promise

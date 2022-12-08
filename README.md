@@ -95,8 +95,11 @@ Standard Options:
 
  --httpTimeout
 
-  Maximum time in ms to wait for an HTTP HEAD/GET request, default 0
-  which results in using the OS default
+  Maximum time in ms to wait for an HTTP HEAD/GET request, default 60000
+
+ --socketTimeout
+
+  Maximum time in ms to wait for an Socket connection establishment, default 60000.
 
 -i, --interval
 
@@ -123,7 +126,7 @@ Standard Options:
 
   --tcpTimeout
 
-   Maximum time in ms for tcp connect, default 300ms
+   Maximum time in ms for tcp connect, default 60000
 
  -v, --verbose
 

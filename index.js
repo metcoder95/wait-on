@@ -7,8 +7,8 @@ const { join, isAbsolute } = require('node:path')
 const { AsyncPool } = require('@metcoder95/tiny-pool')
 
 const {
-  validateHooks,
   validateOptions,
+  validateHooks,
   parseAjvError,
   parseAjvErrors
 } = require('./lib/validate')
@@ -17,41 +17,12 @@ const { createTCPResource } = require('./lib/tcp')
 const { createSocketResource } = require('./lib/socket')
 const { createFileResource } = require('./lib/file')
 
-/**
-   Waits for resources to become available before calling callback
-
-   Polls file, http(s), tcp ports, sockets for availability.
-
-   Resource types are distinquished by their prefix with default being `file:`
-   - file:/path/to/file - waits for file to be available and size to stabilize
-   - http://foo.com:8000/bar verifies HTTP HEAD request returns 2XX
-   - https://my.bar.com/cat verifies HTTPS HEAD request returns 2XX
-   - http-get:  - HTTP GET returns 2XX response. ex: http://m.com:90/foo
-   - https-get: - HTTPS GET returns 2XX response. ex: https://my/bar
-   - tcp:my.server.com:3000 verifies a service is listening on port
-   - socket:/path/sock verifies a service is listening on (UDS) socket
-     For http over socket, use http://unix:SOCK_PATH:URL_PATH
-                    like http://unix:/path/to/sock:/foo/bar or
-                         http-get://unix:/path/to/sock:/foo/bar
-
-   @param opts object configuring waitOn
-   @param opts.resources array of string resources to wait for. prefix determines the type of resource with the default type of `file:`
-   @param opts.delay integer - optional initial delay in ms, default 0
-   @param opts.httpTimeout integer - optional http HEAD/GET timeout to wait for request, default 0
-   @param opts.interval integer - optional poll resource interval in ms, default 250ms
-   @param opts.log boolean - optional flag to turn on logging to stdout
-   @param opts.reverse boolean - optional flag which reverses the mode, succeeds when resources are not available
-   @param opts.simultaneous integer - optional limit of concurrent connections to a resource, default Infinity
-   @param opts.tcpTimeout - Maximum time in ms for tcp connect, default 300ms
-   @param opts.timeout integer - optional timeout in ms, default Infinity. Aborts with error.
-   @param opts.verbose boolean - optional flag to turn on debug log
-   @param opts.window integer - optional stabilization time in ms, default 750ms. Waits this amount of time for file sizes to stabilize or other resource availability to remain unchanged. If less than interval then will be reset to interval
-   @param cb optional callback function with signature cb(err) - if err is provided then, resource checks did not succeed
-   if not specified, wait-on will return a promise that will be rejected if resource checks did not succeed or resolved otherwise
- */
+// Main function
 function WaitOn (opts, cb) {
   if (cb != null && cb.constructor.name === 'Function') {
-    waitOnImpl(opts).then(cb, cb)
+    waitOnImpl(opts).then(result => {
+      cb(null, result)
+    }, cb)
   } else {
     return waitOnImpl(opts)
   }
@@ -82,6 +53,7 @@ async function waitOnImpl (opts) {
 
   const {
     resources: incomingResources,
+    throwOnInvalidResource,
     timeout,
     simultaneous,
     events
@@ -99,6 +71,10 @@ async function waitOnImpl (opts) {
   }
 
   if (invalidResources.length > 0 && events?.onInvalidResource != null) {
+    if (throwOnInvalidResource) {
+      throw new Error(`Invalid resources: ${invalidResources.join(', ')}`)
+    }
+
     for (const resource of invalidResources) {
       events.onInvalidResource(resource)
     }
@@ -223,7 +199,8 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
 
     return timerPromise
       .then(() => pool.run(resource.exec.bind(null, signal)))
-      .then(onResponse, onError).catch(onError)
+      .then(onResponse, onError)
+      .catch(onError)
   }
 
   function onError (err) {

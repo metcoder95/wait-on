@@ -103,6 +103,9 @@ test('Wait-On#Socket', context => {
 
     const result = await waitOn({
       resources: [`socket:${socketPath}`],
+      socket: {
+        timeout: 500
+      },
       timeout: 1000
     })
 

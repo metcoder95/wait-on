@@ -11,7 +11,7 @@ const { Signale } = require('signale')
 const waitOn = require('.')
 
 const minimistOpts = {
-  string: ['c', 'httpTimeout', 'tcpTimeout'],
+  string: ['c', 'config'],
   boolean: ['h', 'l', 'r', 'v'],
   alias: {
     c: 'config',
@@ -29,6 +29,7 @@ const minimistOpts = {
 const waitOnOpts = [
   'delay',
   'httpTimeout',
+  'socketTimeout',
   'interval',
   'log',
   'reverse',
@@ -38,6 +39,11 @@ const waitOnOpts = [
   'verbose',
   'window'
 ]
+const waitOnOptsMap = {
+  httpTimeout: ['http.bodyTimeout', 'http.headersTimeout'],
+  socketTimeout: ['socket.timeout'],
+  tcpTimeout: ['tcp.timeout']
+}
 
 const logger = new Signale({ scope: 'wait-on' })
 
@@ -60,8 +66,24 @@ const logger = new Signale({ scope: 'wait-on' })
     }
 
     for (const optName of waitOnOpts) {
-      if (argv[optName] != null) {
-        configOpts[optName] = argv[optName]
+      const optValue = argv[optName]
+      const hasMapping = waitOnOptsMap[optName] != null
+
+      if (optValue != null && !hasMapping) {
+        configOpts[optName] = optValue
+      } else if (hasMapping && optValue != null) {
+        const mappings = waitOnOptsMap[optName]
+
+        for (const mapping of mappings) {
+          // http.bodyTimeout => [http, bodyTimeout]
+          const [section, name] = mapping.split('.')
+
+          if (configOpts[section] == null) {
+            configOpts[section] = { [name]: optValue }
+          } else {
+            configOpts[section][name] = optValue
+          }
+        }
       }
     }
 

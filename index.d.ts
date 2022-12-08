@@ -1,19 +1,40 @@
 /// <reference types="node" />
-import { AgentOptions as HTTPAgentOptions } from "node:http";
-import { AgentOptions as HTTPSAgentOptions } from "node:https";
+import { ProxyAgent } from 'undici';
+
+type WaitOnCallback = (err?: Error, result: boolean) => unknown;
 
 declare function WaitOn(
   options: WaitOnOptions,
-  cb?: WaitOnCallback
-): Promise<void> | void;
+  cb: WaitOnCallback
+): Promise<boolean>;
 
-type WaitOnCallback = (err?: Error) => unknown;
+declare function WaitOn(options: WaitOnOptions): Promise<boolean>;
 
-type WaitOnProxyConfig = {
-  host?: string;
-  protocol?: string;
-  auth?: WaitOnOptions["auth"];
-};
+type WaitOnProxyConfig = ProxyAgent.Options;
+
+/**
+ * @description Invoked when an unsuccessful response is received from resource
+ */
+type WaitOnEventHandler = (
+  resource: WaitOnResourcesType,
+  response: string
+) => void;
+/**
+ * @description invoked when an invalid resource is encountered
+ * @note It won't be invoked if the 'throwOnInvalidResource' option is on
+ */
+type WaitOnInvalidResourceEventHandler = (
+  resource: WaitOnResourcesType
+) => void;
+/**
+ * @description Invoked when the resource becomes available and stable
+ */
+type WaitOnDoneEventHandler = (resource: WaitOnResourcesType) => void;
+/**
+ * @description Invoked when an unexpected error or a timed out waiting for the resource
+ * occurs
+ */
+type WaitOnErrorHandler = (resource: WaitOnResourcesType, error: Error) => void;
 
 type WaitOnResourcesType =
   | `file:${string}`
@@ -28,26 +49,37 @@ type WaitOnValidateStatusCallback = (status: number) => boolean;
 
 type WaitOnOptions = {
   resources: WaitOnResourcesType[];
+  throwOnInvalidResource?: boolean;
   delay?: number;
   interval?: number;
-  log?: boolean;
+  timeout?: number;
   reverse?: boolean;
   simultaneous?: number;
-  timeout?: number;
-  tcpTimeout?: number;
-  verbose?: boolean;
-  window?: number;
-  passphrase?: string;
-  proxy?: boolean | WaitOnProxyConfig;
-  auth?: {
-    user: string;
-    pass: string;
+  http?: {
+    bodyTimeout?: number;
+    headersTimeout?: number;
+    maxRedirects?: number;
+    followRedirect?: boolean;
+    headers?: Record<string, string | number>;
+    validateStatus?: WaitOnValidateStatusCallback
   };
-  headers?: Record<string, string | number>;
+  socket?: {
+    timeout?: number;
+  };
+  tcp?: {
+    timeout?: number;
+  };
+  window?: number;
+  proxy?: WaitOnProxyConfig;
+  events?: {
+    onInvalidResource?: WaitOnInvalidResourceEventHandler;
+    onResourceTimeout?: WaitOnErrorHandler;
+    onResourceError?: WaitOnErrorHandler;
+    onResourceResponse?: WaitOnEventHandler;
+    onResourceDone?: WaitOnDoneEventHandler;
+  };
   validateStatus?: WaitOnValidateStatusCallback;
-  strictSSL?: boolean;
-} & HTTPAgentOptions &
-  HTTPSAgentOptions;
+};
 
 export default WaitOn;
 export {
