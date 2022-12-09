@@ -1,4 +1,11 @@
-# wait-on - wait for files, ports, sockets, http(s) resources
+# @metcoder95/wait-on - wait for files, ports, sockets, http(s) resources
+
+[![CI](https://github.com/metcoder95/wait-on/actions/workflows/ci.yml/badge.svg)](https://github.com/metcoder95/wait-on/actions/workflows/ci.yml) [![Release](https://github.com/metcoder95/wait-on/actions/workflows/release.yml/badge.svg)](https://github.com/metcoder95/wait-on/actions/workflows/release.yml)
+
+> **Note**:
+> This is a fork of the original [`wait-on`](https://github.com/jeffbski/wait-on) made by @jeffbski. It respects the given LICENSE from the original fork, and aims to provide a similar functionality with slighlty differences compared to the original project
+> The fork is meant to extend maintenance of the last project while upgrading it by adding support and using up-to-date technologies and practices, like providing TS types, or using Promise as its much extend.
+> This fork is not meant to replace the original `wait-on` but rather coexists and open its arms to any person that wants to continue using `wait-on` while adding changes on a more regular basis.
 
 wait-on is a cross-platform command line utility which will wait for files, ports, sockets, and http(s) resources to become available (or not available using reverse mode). Functionality is also available via a Node.js API. Cross-platform - runs everywhere Node.js runs (linux, unix, mac OS X, windows)
 
@@ -8,19 +15,16 @@ For http(s) resources wait-on will check that the requests are returning 2XX (su
 
 wait-on can also be used in reverse mode which waits for resources to NOT be available. This is useful in waiting for services to shutdown before continuing. (Thanks @skarbovskiy for adding this feature)
 
-[![Build Status](https://travis-ci.com/jeffbski/wait-on.svg?branch=master)](https://travis-ci.com/jeffbski/wait-on)
-
 ## Installation
 
-Latest version 4+ requires Node.js 10+
+### Requirements
 
-(Node.js v8 users can use wait-on@5.3.0, v4 users can still use wait-on@2.1.2, and older Node.js
-engines, use wait-on@1.5.4)
+- `Node.js` >= 16
 
 ```bash
-npm install wait-on # local version
+npm install @metcoder95/wait-on # local version and for programatic usage
 OR
-npm install -g wait-on # global version
+npm install -g @metcoder95/wait-on # global version
 ```
 
 ## Usage
@@ -147,128 +151,133 @@ Standard Options:
 
 ### Node.js API usage
 
+#### JavaScript
+
 ```javascript
-var waitOn = require('wait-on');
-var opts = {
+const { WaitOn } = require('@metcoder95/wait-on');
+
+WaitOn({
   resources: [
-    'file1',
-    'http://foo.com:8000/bar',
-    'https://my.com/cat',
-    'http-get://foo.com:8000/bar',
-    'https-get://my.com/cat',
-    'tcp:foo.com:8000',
-    'socket:/my/sock',
-    'http://unix:/my/sock:/my/url',
-    'http-get://unix:/my/sock:/my/url'
+    'http://localhost:3000',
+    'tcp://localhost:3001',
+    'some-file.txt',
+    '/Users/metcoder95/path-to-file',
+    '../file.txt',
   ],
-  delay: 1000, // initial delay in ms, default 0
-  interval: 100, // poll interval in ms, default 250ms
-  simultaneous: 1, // limit to 1 connection per resource at a time
-  timeout: 30000, // timeout in ms, default Infinity
-  tcpTimeout: 1000, // tcp timeout in ms, default 300ms
-  window: 1000, // stabilization time in ms, default 750ms
+  timeout: 10000,
+  events: {
+    onResourceResponse: console.log,
+  },
+}).then((res) => console.log('done:', res), console.error);
+```
 
-  // http options
-  ca: [
-    /* strings or binaries */
+#### TypeScript
+
+```typescript
+import WaitOn from '@metcoder95/wait-on';
+
+WaitOn({
+  resources: [
+    'http://localhost:3000',
+    'tcp://localhost:3001',
+    'some-file.txt',
+    '/Users/metcoder95/path-to-file',
+    '../file.txt',
   ],
-  cert: [
-    /* strings or binaries */
-  ],
-  key: [
-    /* strings or binaries */
-  ],
-  passphrase: 'yourpassphrase',
-  proxy: false /* OR proxy config as defined in axios.
-  If not set axios detects proxy from env vars http_proxy and https_proxy
-  https://github.com/axios/axios#config-defaults
-  {
-    host: '127.0.0.1',
-    port: 9000,
-    auth: {
-      username: 'mikeymike',
-      password: 'rapunz3l'
-    }
-  } */,
-  auth: {
-    user: 'theuser', // or username
-    pass: 'thepassword' // or password
+  timeout: 10000,
+  events: {
+    onResourceResponse: console.log,
   },
-  strictSSL: false,
-  followRedirect: true,
-  headers: {
-    'x-custom': 'headers'
-  },
-  validateStatus: function (status) {
-    return status >= 200 && status < 300; // default if not provided
-  }
+}, (err: Error, result: boolean) => {
+  if (err != null) console.error(err)
+  else console.log(result)
+}).
+```
+
+`wait-on` function can be called by either passing a callback or just calling the function. If not callback provided, a `Promise<boolean>` will be returned, otherwise the callback provided will be called once the set of checks are done.
+
+#### Type Definitions
+```ts
+type WaitOnCallback = (err?: Error, result: boolean) => unknown;
+
+declare function WaitOn(
+  options: WaitOnOptions,
+  cb: WaitOnCallback
+): Promise<boolean>;
+
+declare function WaitOn(options: WaitOnOptions): Promise<boolean>;
+
+type WaitOnProxyConfig = ProxyAgent.Options;
+
+/**
+ * @description Invoked when an unsuccessful response is received from resource
+ */
+type WaitOnEventHandler = (
+  resource: WaitOnResourcesType,
+  response: string
+) => void;
+/**
+ * @description invoked when an invalid resource is encountered
+ * @note It won't be invoked if the 'throwOnInvalidResource' option is on
+ */
+type WaitOnInvalidResourceEventHandler = (
+  resource: WaitOnResourcesType
+) => void;
+/**
+ * @description Invoked when the resource becomes available and stable
+ */
+type WaitOnDoneEventHandler = (resource: WaitOnResourcesType) => void;
+/**
+ * @description Invoked when an unexpected error or a timed out waiting for the resource
+ * occurs
+ */
+type WaitOnErrorHandler = (resource: WaitOnResourcesType, error: Error) => void;
+
+type WaitOnResourcesType =
+  | `file:${string}`
+  | `http-get:${string}`
+  | `https-get:${string}`
+  | `http:${string}`
+  | `https:${string}`
+  | `tcp:${string}`
+  | `socket:${string}`;
+
+type WaitOnValidateStatusCallback = (status: number) => boolean;
+
+type WaitOnOptions = {
+  resources: WaitOnResourcesType[];
+  throwOnInvalidResource?: boolean;
+  delay?: number;
+  interval?: number;
+  timeout?: number;
+  reverse?: boolean;
+  simultaneous?: number;
+  http?: {
+    bodyTimeout?: number;
+    headersTimeout?: number;
+    maxRedirects?: number;
+    followRedirect?: boolean;
+    headers?: Record<string, string | number>;
+    validateStatus?: WaitOnValidateStatusCallback
+  };
+  socket?: {
+    timeout?: number;
+  };
+  tcp?: {
+    timeout?: number;
+  };
+  window?: number;
+  proxy?: WaitOnProxyConfig;
+  events?: {
+    onInvalidResource?: WaitOnInvalidResourceEventHandler;
+    onResourceTimeout?: WaitOnErrorHandler;
+    onResourceError?: WaitOnErrorHandler;
+    onResourceResponse?: WaitOnEventHandler;
+    onResourceDone?: WaitOnDoneEventHandler;
+  };
+  validateStatus?: WaitOnValidateStatusCallback;
 };
-
-// Usage with callback function
-waitOn(opts, function (err) {
-  if (err) {
-    return handleError(err);
-  }
-  // once here, all resources are available
-});
-
-// Usage with promises
-waitOn(opts)
-  .then(function () {
-    // once here, all resources are available
-  })
-  .catch(function (err) {
-    handleError(err);
-  });
-
-// Usage with async await
-try {
-  await waitOn(opts);
-  // once here, all resources are available
-} catch (err) {
-  handleError(err);
-}
 ```
-
-waitOn(opts, [cb]) - function which triggers resource checks
-
-- opts.resources - array of string resources to wait for. prefix determines the type of resource with the default type of `file:`
-- opts.delay - optional initial delay in ms, default 0
-- opts.interval - optional poll resource interval in ms, default 250ms
-- opts.log - optional flag which outputs to stdout, remaining resources waited on and when complete or errored
-- opts.resources - optional array of string resources to wait for if none are specified via command line
-- opts.reverse - optional flag to reverse operation so checks are for resources being NOT available, default false
-- opts.simultaneous - optional count to limit concurrent connections per resource at a time, setting to 1 waits for previous connection to succeed, fail, or timeout before sending another, default infinity
-- opts.timeout - optional timeout in ms, default Infinity. Aborts with error.
-- opts.tcpTimeout - optional tcp timeout in ms, default 300ms
-- opts.verbose - optional flag which outputs debug output, default false
-- opts.window - optional stabilization time in ms, default 750ms. Waits this amount of time for file sizes to stabilize or other resource availability to remain unchanged.
-- http(s) specific options, see https://nodejs.org/api/tls.html#tls_tls_connect_options_callback for specific details
-
-  - opts.ca: [ /* strings or binaries */ ],
-  - opts.cert: [ /* strings or binaries */ ],
-  - opts.key: [ /* strings or binaries */ ],
-  - opts.passphrase: 'yourpassphrase',
-  - opts.proxy: undefined, false, or object as defined in axios. Default is undefined. If not set axios detects proxy from env vars http_proxy and https_proxy. https://github.com/axios/axios#config-defaults
-
-```js
-  // example proxy object
-  {
-    host: '127.0.0.1',
-    port: 9000,
-    auth: {
-      username: 'mikeymike',
-      password: 'rapunz3l'
-    }
-  }
-```
-
-- opts.auth: { user, pass }
-- opts.strictSSL: false,
-- opts.followRedirect: false, // defaults to true
-- opts.headers: { 'x-custom': 'headers' },
-
-- cb(err) - if err is provided then, resource checks did not succeed
 
 ## Goals
 
@@ -291,10 +300,9 @@ I frequently need to wait on build tasks to complete or services to be available
 
 If you have input or ideas or would like to get involved, you may:
 
-- contact me via twitter @jeffbski - <http://twitter.com/jeffbski>
-- open an issue on github to begin a discussion - <https://github.com/jeffbski/wait-on/issues>
-- fork the repo and send a pull request (ideally with tests) - <https://github.com/jeffbski/wait-on>
+- Open an issue on github to begin a discussion - <https://github.com/metcoder95/wait-on/issues>
+- Fork the repo and send a pull request (with tests, and possible documentation changes) - <https://github.com/metcoder95/wait-on>
 
 ## License
 
-- [MIT license](http://github.com/jeffbski/wait-on/raw/master/LICENSE)
+- [MIT license](http://github.com/metcoder95/wait-on/raw/master/LICENSE)
