@@ -17,7 +17,11 @@ const { createTCPResource } = require('./lib/tcp')
 const { createSocketResource } = require('./lib/socket')
 const { createFileResource } = require('./lib/file')
 
-// Main function
+/**
+ * @param {import(".").WaitOnOptions} opts
+ * @param {(import(".").WaitOnCallback) | undefined} cb
+ * @return {Promise<boolean> | void}
+ */
 function WaitOn (opts, cb) {
   if (cb != null && cb.constructor.name === 'Function') {
     waitOnImpl(opts).then(result => {
@@ -28,8 +32,13 @@ function WaitOn (opts, cb) {
   }
 }
 
+/**
+ * @param {import(".").WaitOnOptions} opts
+ * @return {boolean}
+ */
 async function waitOnImpl (opts) {
   // TODO: deepclone instead of shallow
+  /** @type {Required<import(".").WaitOnOptions>} */
   const waitOnOptions = Object.assign(Object.create(null), opts)
   const validResult = validateOptions(waitOnOptions)
   if (!validResult) {
