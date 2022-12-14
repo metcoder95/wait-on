@@ -54,6 +54,7 @@ type WaitOnOptions = {
   interval?: number;
   timeout?: number;
   reverse?: boolean;
+  any?: boolean;
   simultaneous?: number;
   http?: {
     bodyTimeout?: number;

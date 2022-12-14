@@ -53,6 +53,7 @@ async function waitOnImpl (opts) {
 
   const {
     resources: incomingResources,
+    any: atAnyResource,
     throwOnInvalidResource,
     timeout,
     simultaneous,
@@ -105,6 +106,8 @@ async function waitOnImpl (opts) {
       state: globalState
     })
 
+    globalState.set(resource.name, false)
+
     const promise = pool.run(resource.exec.bind(null, controller.signal))
     promise.then(onResponse, onError).catch(onError)
   }
@@ -112,26 +115,29 @@ async function waitOnImpl (opts) {
   const timer = timedout(timeout, controller, timerController.signal)
 
   let success
+  let finished = false
   while (success == null) {
-    let unfinished = false
     // Serves as checkpoint to validate the status of all resources
     const result = await Promise.race([once(pool, 'idle'), timer])
     // If the `once` function returns an array when the event is emitted, then
     // the pool is idle, otherwise the timer has expired
     const timedout = Array.isArray(result) ? false : result
 
-    for (const [, state] of globalState) {
-      if (!state) {
-        unfinished = true
+    for (const [, done] of globalState) {
+      if (atAnyResource && done) {
+        success = true
+        finished = true
         break
-      }
+      } else if (!done && !atAnyResource) break
+      else finished = true
     }
 
-    if (unfinished && !timedout) {
-      continue
-    } else {
+    if (success != null || finished || timedout) {
       timerController.abort()
-      success = !timedout
+      // In case there is any in-fly request
+      // TODO: Replace por proper Error object
+      controller.abort('Resource check aborted')
+      success = success ?? !timedout
       break
     }
   }
@@ -144,7 +150,8 @@ async function timedout (timeout, controller, signal) {
     signal
   })
 
-  process.nextTick(() => controller.abort())
+  // TODO: Replace por proper Error object
+  process.nextTick(() => controller.abort('Resource check timedout'))
 
   return timed
 }
@@ -155,8 +162,6 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
   let isRunningStabilityWindow = false
   /** @type {boolean} */
   let isStable
-
-  state.set(resource.name, false)
 
   return {
     onError,
