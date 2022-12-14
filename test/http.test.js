@@ -28,7 +28,7 @@ test('Wait-On#HTTP', { only: true }, context => {
     await setTimeout(1500)
 
     await new Promise((resolve, reject) => {
-      server.listen(3001, async e => {
+      server.listen(3001, e => {
         if (e != null) reject(e)
 
         resolve()
