@@ -203,6 +203,9 @@ WaitOn({
 
 #### Type Definitions
 ```ts
+/// <reference types="node" />
+import { ProxyAgent } from 'undici';
+
 type WaitOnCallback = (err?: Error, result: boolean) => unknown;
 
 declare function WaitOn(
@@ -256,6 +259,7 @@ type WaitOnOptions = {
   interval?: number;
   timeout?: number;
   reverse?: boolean;
+  any?: boolean;
   simultaneous?: number;
   http?: {
     bodyTimeout?: number;
