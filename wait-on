@@ -12,7 +12,7 @@ const waitOn = require('.')
 
 const minimistOpts = {
   string: ['c', 'config'],
-  boolean: ['h', 'l', 'r', 'v'],
+  boolean: ['h', 'l', 'r', 'v', 'any'],
   alias: {
     c: 'config',
     d: 'delay',
@@ -37,7 +37,8 @@ const waitOnOpts = [
   'timeout',
   'tcpTimeout',
   'verbose',
-  'window'
+  'window',
+  'any'
 ]
 const waitOnOptsMap = {
   httpTimeout: ['http.bodyTimeout', 'http.headersTimeout'],

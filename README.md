@@ -89,64 +89,69 @@ Description:
 
 Standard Options:
 
- -c, --config
+  -c, --config
 
-  js or json config file, useful for http(s) options and resources
+    js or json config file, useful for http(s) options and resources
 
- -d, --delay
+  -d, --delay
 
-  Initial delay before checking for resources in ms, default 0
+    Initial delay before checking for resources in ms, default 0
 
- --httpTimeout
+  --httpTimeout
 
-  Maximum time in ms to wait for an HTTP HEAD/GET request, default 60000
+    Maximum time in ms to wait for an HTTP HEAD/GET request, default 60000
 
- --socketTimeout
+  --socketTimeout
 
-  Maximum time in ms to wait for an Socket connection establishment, default 60000.
+    Maximum time in ms to wait for an Socket connection establishment, default 60000.
 
--i, --interval
+  -i, --interval
 
-  Interval to poll resources in ms, default 250ms
+    Interval to poll resources in ms, default 250ms
 
- -l, --log
+  -l, --log
 
-  Log resources begin waited on and when complete or errored
+    Log resources begin waited on and when complete or errored
 
- -r, --reverse
+  -r, --reverse
 
-  Reverse operation, wait for resources to NOT be available
+    Reverse operation, wait for resources to NOT be available
 
- -s, --simultaneous
+  --any
 
-  Simultaneous / Concurrent connections to a resource, default Infinity
-  Setting this to 1 would delay new requests until previous one has completed.
-  Used to limit the number of connections attempted to a resource at a time.
+    Succededs at the first resource being fully available. Useful when listening
+    for different ports at the same host.
 
- -t, --timeout
+  -s, --simultaneous
 
-  Maximum time in ms to wait before exiting with failure (1) code,
-  default Infinity
+    Simultaneous / Concurrent connections to a resource, default Infinity
+    Setting this to 1 would delay new requests until previous one has completed.
+    Used to limit the number of connections attempted to a resource at a time.
 
-  --tcpTimeout
+  -t, --timeout
 
-   Maximum time in ms for tcp connect, default 60000
+    Maximum time in ms to wait before exiting with failure (1) code,
+    default Infinity
 
- -v, --verbose
+    --tcpTimeout
 
-  Enable debug output to stdout
+    Maximum time in ms for tcp connect, default 60000
 
- -w, --window
+  -v, --verbose
 
-  Stability window, the time in ms defining the window of time that
-  resource needs to have not changed (file size or availability) before
-  signalling success, default 750ms. If less than interval, it will be
-  reset to the value of interval. This is only used for files, other
-  resources are considered available on first detection.
+    Enable debug output to stdout
 
- -h, --help
+  -w, --window
 
-  Show this message
+    Stability window, the time in ms defining the window of time that
+    resource needs to have not changed (file size or availability) before
+    signalling success, default 750ms. If less than interval, it will be
+    reset to the value of interval. This is only used for files, other
+    resources are considered available on first detection.
+
+  -h, --help
+
+    Show this message
 ```
 
 ### Node.js API usage
@@ -198,6 +203,9 @@ WaitOn({
 
 #### Type Definitions
 ```ts
+/// <reference types="node" />
+import { ProxyAgent } from 'undici';
+
 type WaitOnCallback = (err?: Error, result: boolean) => unknown;
 
 declare function WaitOn(
@@ -251,6 +259,7 @@ type WaitOnOptions = {
   interval?: number;
   timeout?: number;
   reverse?: boolean;
+  any?: boolean;
   simultaneous?: number;
   http?: {
     bodyTimeout?: number;
