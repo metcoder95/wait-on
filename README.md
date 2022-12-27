@@ -203,7 +203,6 @@ WaitOn({
 
 #### Type Definitions
 ```ts
-/// <reference types="node" />
 import { ProxyAgent } from 'undici';
 
 type WaitOnCallback = (err?: Error, result: boolean) => unknown;
@@ -242,13 +241,13 @@ type WaitOnDoneEventHandler = (resource: WaitOnResourcesType) => void;
 type WaitOnErrorHandler = (resource: WaitOnResourcesType, error: Error) => void;
 
 type WaitOnResourcesType =
-  | `file:${string}`
-  | `http-get:${string}`
-  | `https-get:${string}`
-  | `http:${string}`
-  | `https:${string}`
-  | `tcp:${string}`
-  | `socket:${string}`;
+  | `file://${string}`
+  | `http-get://${string}`
+  | `https-get://${string}`
+  | `http://${string}`
+  | `https://${string}`
+  | `tcp://${string}`
+  | `socket://${string}`;
 
 type WaitOnValidateStatusCallback = (status: number) => boolean;
 
