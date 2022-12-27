@@ -1,6 +1,6 @@
 # @metcoder95/wait-on - wait for files, ports, sockets, http(s) resources
 
-[![CI](https://github.com/metcoder95/wait-on/actions/workflows/ci.yml/badge.svg)](https://github.com/metcoder95/wait-on/actions/workflows/ci.yml) [![Release](https://github.com/metcoder95/wait-on/actions/workflows/release.yml/badge.svg)](https://github.com/metcoder95/wait-on/actions/workflows/release.yml)
+[![CI](https://github.com/metcoder95/wait-on/actions/workflows/ci.yml/badge.svg)](https://github.com/metcoder95/wait-on/actions/workflows/ci.yml) [![Release](https://github.com/metcoder95/wait-on/actions/workflows/release.yml/badge.svg)](https://github.com/metcoder95/wait-on/actions/workflows/release.yml) ![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/metcoder95/wait-on?include_prereleases&label=%40metcoder95%2Fwait-on)
 
 > **Note**:
 > This is a fork of the original [`wait-on`](https://github.com/jeffbski/wait-on) made by @jeffbski. It respects the given LICENSE from the original fork, and aims to provide a similar functionality with slighlty differences compared to the original project
