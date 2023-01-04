@@ -7,6 +7,7 @@ const { join, isAbsolute } = require('node:path')
 const { AsyncPool } = require('@metcoder95/tiny-pool')
 
 const { clone } = require('./lib/utils')
+const { WAIT_ON_RESOURCE_ABORTED, WAIT_ON_TIMEDOUT } = require('./lib/error')
 const {
   validateOptions,
   validateHooks,
@@ -132,6 +133,9 @@ async function waitOnImpl (opts) {
     // the pool is idle, otherwise the timer has expired
     const timedout = Array.isArray(result) ? false : result
 
+    // We do one more check of the global state in case
+    // we exhausted the timer, otherwise the flow continues
+    // as usual
     for (const [, done] of globalState) {
       if (atAnyResource && done) {
         success = true
@@ -144,8 +148,7 @@ async function waitOnImpl (opts) {
     if (success != null || finished || timedout) {
       timerController.abort()
       // In case there is any in-fly request
-      // TODO: Replace por proper Error object
-      controller.abort('Resource check aborted')
+      controller.abort(new WAIT_ON_RESOURCE_ABORTED('Resource check aborted'))
       success = success ?? !timedout
       break
     }
@@ -159,8 +162,9 @@ async function timedout (timeout, controller, signal) {
     signal
   })
 
-  // TODO: Replace por proper Error object
-  process.nextTick(() => controller.abort('Resource check timedout'))
+  process.nextTick(() =>
+    controller.abort(new WAIT_ON_TIMEDOUT('Resource check timedout'))
+  )
 
   return timed
 }
