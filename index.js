@@ -6,6 +6,7 @@ const { join, isAbsolute } = require('node:path')
 
 const { AsyncPool } = require('@metcoder95/tiny-pool')
 
+const { clone } = require('./lib/utils')
 const {
   validateOptions,
   validateHooks,
@@ -39,7 +40,7 @@ function WaitOn (opts, cb) {
 async function waitOnImpl (opts) {
   // TODO: deepclone instead of shallow
   /** @type {Required<import(".").WaitOnOptions>} */
-  const waitOnOptions = Object.assign(Object.create(null), opts)
+  const waitOnOptions = clone(opts)
   const validResult = validateOptions(waitOnOptions)
   if (!validResult) {
     const parsedError = parseAjvErrors(validateOptions.errors)
