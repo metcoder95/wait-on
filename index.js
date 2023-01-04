@@ -38,7 +38,6 @@ function WaitOn (opts, cb) {
  * @return {boolean}
  */
 async function waitOnImpl (opts) {
-  // TODO: deepclone instead of shallow
   /** @type {Required<import(".").WaitOnOptions>} */
   const waitOnOptions = clone(opts)
   const validResult = validateOptions(waitOnOptions)
@@ -231,11 +230,10 @@ function handleResponse ({ resource, pool, signal, waitOnOptions, state }) {
 
 function createResource (deps, resource) {
   let protocol
-  // TODO: refactor resource to use URL instance instead
   try {
     protocol = new URL(resource).protocol
   } catch {
-    // Not a valid URL meaning that we fallback into file protocol
+    // Not a valid URL, fallback into file protocol
     const parsed = new URL(
       `file:/${isAbsolute(resource) ? resource : join(process.cwd(), resource)}`
     )
