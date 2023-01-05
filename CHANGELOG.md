@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.3.0](https://github.com/metcoder95/wait-on/compare/v0.2.0...v0.3.0) (2023-01-05)
+
+
+### Bug Fixes
+
+* TS Types ([#18](https://github.com/metcoder95/wait-on/issues/18)) ([734cd9b](https://github.com/metcoder95/wait-on/commit/734cd9b435177920e6ac03328b8084acf9f136d9))
+
 ### [0.2.1](https://github.com/metcoder95/wait-on/compare/v0.2.0...v0.2.1) (2022-12-27)
 
 ## [0.2.0](https://github.com/metcoder95/wait-on/compare/v0.1.0...v0.2.0) (2022-12-14)
