@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.0](https://github.com/metcoder95/wait-on/compare/v0.3.0...v0.4.0) (2023-01-10)
+
+
+### Features
+
+* **tcp:** happy eyeballs support ([#20](https://github.com/metcoder95/wait-on/issues/20)) ([52b203b](https://github.com/metcoder95/wait-on/commit/52b203b8e614de772c87cd94df77b993688fb9cb))
+
 ## [0.3.0](https://github.com/metcoder95/wait-on/compare/v0.2.0...v0.3.0) (2023-01-05)
 
 
