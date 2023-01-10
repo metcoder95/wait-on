@@ -48,7 +48,7 @@ async function waitOnImpl (opts) {
   }
 
   // window needs to be at least interval
-  if (waitOnOptions.window < waitOnOptions.interval) {
+  if (waitOnOptions.window != null && waitOnOptions.window < waitOnOptions.interval) {
     waitOnOptions.window = waitOnOptions.interval
   }
 
