@@ -145,9 +145,7 @@ Standard Options:
 
     Stability window, the time in ms defining the window of time that
     resource needs to have not changed (file size or availability) before
-    signalling success, default 750ms. If less than interval, it will be
-    reset to the value of interval. This is only used for files, other
-    resources are considered available on first detection.
+    signalling success.
 
   -h, --help
 

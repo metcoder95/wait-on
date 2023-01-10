@@ -6,7 +6,7 @@ const { test } = require('tap')
 
 const waitOn = require('..')
 
-test('Wait-On#HTTP', { only: true }, context => {
+test('Wait-On#HTTP', context => {
   context.plan(7)
 
   context.test('Basic HTTP', async t => {
@@ -89,7 +89,7 @@ test('Wait-On#HTTP', { only: true }, context => {
         }
       })
 
-      t.plan(4)
+      t.plan(3)
       t.teardown(server.close.bind(server))
 
       const waiting = waitOn({
@@ -114,7 +114,7 @@ test('Wait-On#HTTP', { only: true }, context => {
       const result = await waiting
 
       t.equal(result, true)
-      t.equal(callbackCalled, 3)
+      t.equal(callbackCalled, 2)
     }
   )
 

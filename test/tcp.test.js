@@ -9,7 +9,7 @@ const waitOn = require('..')
 function noop () {}
 
 test('Wait-On#TCP', context => {
-  context.plan(4)
+  context.plan(6)
 
   context.test('Basic TCP', async t => {
     const server = createServer({
@@ -102,5 +102,51 @@ test('Wait-On#TCP', context => {
     const result = await promise
 
     t.equal(result, false)
+  })
+
+  context.test('Basic TCP with happy eyeballs (IPv4)', async t => {
+    const server = createServer({
+      keepAlive: false
+    })
+
+    server.on('connection', noop)
+
+    server.on('error', noop)
+
+    t.plan(1)
+    t.teardown(server.close.bind(server))
+
+    await new Promise(resolve => {
+      server.listen(0, '127.0.0.1', resolve)
+    })
+
+    const result = await waitOn({
+      resources: [`tcp://localhost:${server.address().port}`]
+    })
+
+    t.equal(result, true)
+  })
+
+  context.test('Basic TCP with happy eyeballs (IPv6)', async t => {
+    const server = createServer({
+      keepAlive: false
+    })
+
+    server.on('connection', noop)
+
+    server.on('error', noop)
+
+    t.plan(1)
+    t.teardown(server.close.bind(server))
+
+    await new Promise(resolve => {
+      server.listen(0, resolve)
+    })
+
+    const result = await waitOn({
+      resources: [`tcp://localhost:${server.address().port}`]
+    })
+
+    t.equal(result, true)
   })
 })
