@@ -7,9 +7,6 @@
   "bin": {
     "wait-on": "./wait-on"
   },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "author": "Jeff Barczewski <info@codewinds.com>",
   "contributors": [
     {
