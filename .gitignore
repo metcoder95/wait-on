@@ -107,5 +107,4 @@ dist
 # As is a package, the lockfile is not needed
 package-lock.json
 .github
-.husky
 tsconfig.json

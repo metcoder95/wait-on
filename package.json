@@ -31,7 +31,8 @@
     "test:ts": "tsd",
     "lint": "standard | snazzy",
     "lint:ci": "standard",
-    "release": "npx standard-version"
+    "release": "npx standard-version",
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=16.x"
