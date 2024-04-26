@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0](https://github.com/metcoder95/wait-on/compare/v1.0.0...v2.0.0) (2024-04-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* minimum version to v18
+* add support for v22
+
+### Features
+
+* add support for v22 ([bf7ddce](https://github.com/metcoder95/wait-on/commit/bf7ddcefd5eb04d193913577efbc796c92402147))
+* minimum version to v18 ([44b6082](https://github.com/metcoder95/wait-on/commit/44b608295b6e6285dea6f2dce0204ff2ae7bbd1a))
+
 ## [1.0.0](https://github.com/metcoder95/wait-on/compare/v0.4.0...v1.0.0) (2023-05-18)
 
 ## [0.4.0](https://github.com/metcoder95/wait-on/compare/v0.3.0...v0.4.0) (2023-01-10)
