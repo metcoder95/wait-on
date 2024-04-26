@@ -35,7 +35,7 @@
     "prepare": "husky"
   },
   "engines": {
-    "node": ">=16.x"
+    "node": ">=18.x"
   },
   "tsd": {
     "directory": "test"
