@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0](https://github.com/metcoder95/wait-on/compare/v2.0.0...v3.0.0) (2024-10-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* drop Node v18
+
+### Features
+
+* drop Node v18 ([6e6832d](https://github.com/metcoder95/wait-on/commit/6e6832db1bffff1087856e77c32f80fa716e7e66))
+
 ## [2.0.0](https://github.com/metcoder95/wait-on/compare/v1.0.0...v2.0.0) (2024-04-26)
 
 
