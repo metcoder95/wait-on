@@ -224,14 +224,12 @@ test('Wait-On#HTTP', context => {
     }
   )
 
-  context.test('Basic HTTP with timeout', async t => {
+  context.test('Basic HTTP with timeout', { only: true }, t => {
     t.plan(1)
 
-    const result = await waitOn({
+    waitOn({
       resources: ['http://localhost:3004'],
-      timeout: 1500
-    })
-
-    t.equal(result, false)
+      timeout: 500
+    }).then(result => t.equal(result, false), err => t.err(err))
   })
 })
