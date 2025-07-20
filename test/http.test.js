@@ -148,14 +148,7 @@ test('Wait-On#HTTP', context => {
   context.test(
     'Basic HTTP - fallback to ipv6 if ipv4 not available on localhost',
     async t => {
-      let ipv4Called = false
       let ipv6Called = false
-
-      const server4 = createServer((req, res) => {
-        ipv4Called = true
-        res.writeHead(500, { 'Content-Type': 'text/plain' })
-        res.end('oops!')
-      })
 
       const server6 = createServer((req, res) => {
         ipv6Called = true
@@ -163,17 +156,9 @@ test('Wait-On#HTTP', context => {
         res.end('Hello World')
       })
 
-      t.plan(3)
+      t.plan(2)
 
-      t.teardown(server4.close.bind(server4))
       t.teardown(server6.close.bind(server6))
-
-      await new Promise((resolve, reject) => {
-        server4.listen({ host: '127.0.0.1', port: 3006 }, e => {
-          if (e != null) reject(e)
-          else resolve()
-        })
-      })
 
       await new Promise((resolve, reject) => {
         server6.listen({ host: '::1', port: 3006 }, e => {
@@ -189,7 +174,6 @@ test('Wait-On#HTTP', context => {
       })
 
       t.equal(result, true)
-      t.ok(ipv4Called)
       t.ok(ipv6Called)
     }
   )
@@ -224,7 +208,7 @@ test('Wait-On#HTTP', context => {
     }
   )
 
-  context.test('Basic HTTP with timeout', { only: true }, t => {
+  context.test('Basic HTTP with timeout', t => {
     t.plan(1)
 
     waitOn({

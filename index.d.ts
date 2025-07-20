@@ -46,6 +46,22 @@ type WaitOnResourcesType =
   | `socket://${string}`;
 
 type WaitOnValidateStatusCallback = (status: number) => boolean;
+type WaitOnHTTPOptions = {
+  bodyTimeout?: number;
+  headersTimeout?: number;
+  maxRedirects?: number;
+  followRedirect?: boolean;
+  headers?: Record<string, string | number>;
+  rejectAunauthorized?: booleanl;
+  happyEyeballs?: boolean;
+  validateStatus?: WaitOnValidateStatusCallback;
+};
+type WaitOnSocketOptions = {
+  timeout?: number;
+};
+type WaitOnTCPOptions = {
+  timeout?: number;
+};
 
 type WaitOnOptions = {
   resources: WaitOnResourcesType[];
@@ -56,20 +72,9 @@ type WaitOnOptions = {
   reverse?: boolean;
   any?: boolean;
   simultaneous?: number;
-  http?: {
-    bodyTimeout?: number;
-    headersTimeout?: number;
-    maxRedirects?: number;
-    followRedirect?: boolean;
-    headers?: Record<string, string | number>;
-    validateStatus?: WaitOnValidateStatusCallback
-  };
-  socket?: {
-    timeout?: number;
-  };
-  tcp?: {
-    timeout?: number;
-  };
+  http?: WaitOnHTTPOptions;
+  socket?: WaitOnSocketOptions;
+  tcp?: WaitOnTCPOptions;
   window?: number;
   proxy?: WaitOnProxyConfig;
   events?: {
@@ -89,5 +94,8 @@ export {
   WaitOnResourcesType,
   WaitOnValidateStatusCallback,
   WaitOnCallback,
+  WaitOnHTTPOptions,
+  WaitOnSocketOptions,
+  WaitOnTCPOptions,
   WaitOn,
 };
