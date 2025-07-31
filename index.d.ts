@@ -52,7 +52,7 @@ type WaitOnHTTPOptions = {
   maxRedirects?: number;
   followRedirect?: boolean;
   headers?: Record<string, string | number>;
-  rejectAunauthorized?: booleanl;
+  rejectUnauthorized?: boolean;
   happyEyeballs?: boolean;
   validateStatus?: WaitOnValidateStatusCallback;
 };

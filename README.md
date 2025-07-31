@@ -264,7 +264,9 @@ type WaitOnOptions = {
     maxRedirects?: number;
     followRedirect?: boolean;
     headers?: Record<string, string | number>;
-    validateStatus?: WaitOnValidateStatusCallback
+    validateStatus?: WaitOnValidateStatusCallback;
+    happyEyeballs?: boolean; // default `true`
+    rejectUnauthorized?: boolean; // default `true`
   };
   socket?: {
     timeout?: number;
