@@ -109,3 +109,4 @@ package-lock.json
 .github
 .husky
 tsconfig.json
+.worktrees
