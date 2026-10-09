@@ -43,7 +43,7 @@ jobs:
     runs-on: ${{matrix.os}}
     env:
       # Redirect both variables to GHA's clean, long-form path
-      TEMP: ${{ runner.temp }}
+      TEMP: "${{ runner.temp }}"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
