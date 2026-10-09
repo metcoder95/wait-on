@@ -68,7 +68,7 @@
     "minimist": "^1.2.7",
     "ora": "^9.3.0",
     "signale": "^1.4.0",
-    "undici": "^7.21.0"
+    "undici": "^8.11.2"
   },
   "keywords": [
     "wait",
