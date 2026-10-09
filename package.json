@@ -25,7 +25,7 @@
   "license": "MIT",
   "scripts": {
     "test": "node scripts/test.js",
-    "test:ci": "node scripts/test.js --coverage",
+    "test:ci": "node scripts/test.js --coverage && npm run test:ts",
     "test:only": "node scripts/test.js --only",
     "test:ts": "tsd",
     "lint": "eslint"
