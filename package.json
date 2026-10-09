@@ -50,7 +50,7 @@
     ]
   },
   "devDependencies": {
-    "@types/node": "^24.0.15",
+    "@types/node": "^25.2.2",
     "expect-legacy": "^1.20.2",
     "husky": "^9.0.11",
     "mkdirp": "^3.0.0",
@@ -59,16 +59,16 @@
     "standard": "^17.0.0",
     "tap": "^16.3.10",
     "temp": "^0.9.4",
-    "tsd": "^0.31.0",
+    "tsd": "^0.33.0",
     "typescript": "^5.0.4"
   },
   "dependencies": {
     "@metcoder95/tiny-pool": "^4.0.0",
     "ajv": "^8.11.0",
     "minimist": "^1.2.7",
-    "ora": "^8.0.1",
+    "ora": "^9.3.0",
     "signale": "^1.4.0",
-    "undici": "^7.13.0"
+    "undici": "^7.21.0"
   },
   "keywords": [
     "wait",
