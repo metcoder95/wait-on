@@ -57,9 +57,10 @@ jobs:
         run: npm install
 
       - name: Run Tests
-        run: |
-          export TEMP="${{ runner.temp }}"
-          npm run test:ci
+        env:
+          # Redirect both variables to GHA's clean, long-form path
+          TEMP: "${{ runner.temp }}"
+        run: npm run test:ci
 
   automerge:
     if: >
