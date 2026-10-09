@@ -1,152 +1,139 @@
-'use strict'
-const { createServer } = require('node:net')
-const { setTimeout } = require('node:timers/promises')
+'use strict';
+const { createServer } = require('node:net');
+const { setTimeout } = require('node:timers/promises');
+const test = require('node:test');
 
-const { test } = require('tap')
+const waitOn = require('..');
 
-const waitOn = require('..')
+function noop() {}
+test('Basic TCP', async (t) => {
+  const server = createServer({
+    keepAlive: false,
+  });
 
-function noop () {}
+  server.on('connection', noop);
 
-test('Wait-On#TCP', context => {
-  context.plan(6)
+  server.on('error', noop);
 
-  context.test('Basic TCP', async t => {
-    const server = createServer({
-      keepAlive: false
-    })
+  t.after(server.close.bind(server));
 
-    server.on('connection', noop)
+  const promise = waitOn({
+    resources: ['tcp://localhost:4001'],
+  });
 
-    server.on('error', noop)
+  await setTimeout(1500).then(
+    () =>
+      new Promise((resolve) => {
+        server.listen(4001, resolve);
+      }),
+  );
 
-    t.plan(1)
-    t.teardown(server.close.bind(server))
+  const result = await promise;
 
-    const promise = waitOn({
-      resources: ['tcp://localhost:4001']
-    })
+  t.assert.equal(result, true);
+});
 
-    await setTimeout(1500).then(
-      () =>
-        new Promise(resolve => {
-          server.listen(4001, resolve)
-        })
-    )
+test('Basic TCP - with initial delay', async (t) => {
+  const server = createServer({
+    keepAlive: false,
+  });
 
-    const result = await promise
+  server.on('connection', noop);
 
-    t.equal(result, true)
-  })
+  server.on('error', noop);
 
-  context.test('Basic TCP - with initial delay', async t => {
-    const server = createServer({
-      keepAlive: false
-    })
+  t.after(server.close.bind(server));
 
-    server.on('connection', noop)
+  const promise = waitOn({
+    resources: ['tcp://localhost:4002'],
+    delay: 1000,
+  });
 
-    server.on('error', noop)
+  await new Promise((resolve) => {
+    server.listen(4002, resolve);
+  });
 
-    t.plan(1)
-    t.teardown(server.close.bind(server))
+  const result = await promise;
 
-    const promise = waitOn({
-      resources: ['tcp://localhost:4002'],
-      delay: 1000
-    })
+  t.assert.equal(result, true);
+});
 
-    await new Promise(resolve => {
-      server.listen(4002, resolve)
-    })
+test('Basic TCP - immediate connect', async (t) => {
+  const server = createServer({
+    keepAlive: false,
+  });
 
-    const result = await promise
+  server.on('connection', noop);
 
-    t.equal(result, true)
-  })
+  server.on('error', noop);
 
-  context.test('Basic TCP - immediate connect', async t => {
-    const server = createServer({
-      keepAlive: false
-    })
+  t.after(server.close.bind(server));
 
-    server.on('connection', noop)
+  await new Promise((resolve) => {
+    server.listen(4003, resolve);
+  });
 
-    server.on('error', noop)
+  const result = await waitOn({
+    resources: ['tcp://localhost:4003'],
+  });
 
-    t.plan(1)
-    t.teardown(server.close.bind(server))
+  t.assert.equal(result, true);
+});
 
-    await new Promise(resolve => {
-      server.listen(4003, resolve)
-    })
+test('Basic TCP with timeout', async (t) => {
+  const promise = waitOn({
+    resources: ['tcp://127.0.0.1:5030'],
+    tcp: {
+      timeout: 500,
+    },
+    timeout: 1000,
+  });
 
-    const result = await waitOn({
-      resources: ['tcp://localhost:4003']
-    })
+  const result = await promise;
 
-    t.equal(result, true)
-  })
+  t.assert.equal(result, false);
+});
 
-  context.test('Basic TCP with timeout', async t => {
-    t.plan(1)
+test('Basic TCP with happy eyeballs (IPv4)', async (t) => {
+  const server = createServer({
+    keepAlive: false,
+  });
 
-    const promise = waitOn({
-      resources: ['tcp://127.0.0.1:5030'],
-      tcp: {
-        timeout: 500
-      },
-      timeout: 1000
-    })
+  server.on('connection', noop);
 
-    const result = await promise
+  server.on('error', noop);
 
-    t.equal(result, false)
-  })
+  t.after(server.close.bind(server));
 
-  context.test('Basic TCP with happy eyeballs (IPv4)', async t => {
-    const server = createServer({
-      keepAlive: false
-    })
+  await new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', resolve);
+  });
 
-    server.on('connection', noop)
+  const result = await waitOn({
+    resources: [`tcp://localhost:${server.address().port}`],
+  });
 
-    server.on('error', noop)
+  t.assert.equal(result, true);
+});
 
-    t.plan(1)
-    t.teardown(server.close.bind(server))
+test('Basic TCP with happy eyeballs (IPv6)', async (t) => {
+  const server = createServer({
+    keepAlive: false,
+  });
 
-    await new Promise(resolve => {
-      server.listen(0, '127.0.0.1', resolve)
-    })
+  server.on('connection', noop);
 
-    const result = await waitOn({
-      resources: [`tcp://localhost:${server.address().port}`]
-    })
+  server.on('error', noop);
 
-    t.equal(result, true)
-  })
+  t.after(server.close.bind(server));
 
-  context.test('Basic TCP with happy eyeballs (IPv6)', async t => {
-    const server = createServer({
-      keepAlive: false
-    })
+  await new Promise((resolve) => {
+    server.listen(0, resolve);
+  });
 
-    server.on('connection', noop)
+  const result = await waitOn({
+    resources: [`tcp://localhost:${server.address().port}`],
+  });
 
-    server.on('error', noop)
-
-    t.plan(1)
-    t.teardown(server.close.bind(server))
-
-    await new Promise(resolve => {
-      server.listen(0, resolve)
-    })
-
-    const result = await waitOn({
-      resources: [`tcp://localhost:${server.address().port}`]
-    })
-
-    t.equal(result, true)
-  })
-})
+  t.assert.equal(result, true);
+});

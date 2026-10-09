@@ -1,48 +1,34 @@
-'use strict'
+'use strict';
 
-const childProcess = require('child_process')
-const { promisify } = require('util')
+const childProcess = require('child_process');
+const { promisify } = require('node:util');
+const test = require('node:test');
 
-const { test } = require('tap')
+const waitOn = require('..');
+const exec = promisify(childProcess.exec);
 
-const waitOn = require('..')
+test('Import#Should throw if empty Options', async (t) => {
+  await t.assert.rejects(waitOn(), 'Should throw if empty Options');
+  await t.assert.rejects(waitOn(null), 'Should throw if empty Options');
+});
 
-test('Wait-On#Programatically', context => {
-  context.plan(2)
+test('Import#Should throw if empty Options#resources', async (t) => {
+  await t.assert.rejects(
+    waitOn({ resources: null }),
+    'Should throw if empty Options#resources',
+  );
 
-  context.test('Should throw if empty Options', async t => {
-    t.plan(2)
+  await t.assert.rejects(
+    waitOn({}),
+    'Should throw if empty Options#resources (null)',
+  );
+});
 
-    await t.rejects(waitOn(), 'Should throw if empty Options')
-    await t.rejects(waitOn(null), 'Should throw if empty Options')
-  })
-
-  context.test('Should throw if empty Options#resources', async t => {
-    t.plan(2)
-
-    await t.rejects(
-      waitOn({ resources: null }),
-      'Should throw if empty Options#resources'
-    )
-
-    await t.rejects(
-      waitOn({}),
-      'Should throw if empty Options#resources (null)'
-    )
-  })
-})
-
-test('Wait-On#CLI', context => {
-  const exec = promisify(childProcess.exec)
-  context.plan(1)
-
-  context.test('Should exit with code 1', async t => {
-    t.plan(1)
-
-    try {
-      await exec('./wait-on')
-    } catch (err) {
-      t.equal(err.code, 1, 'Should exit with code 1')
-    }
-  })
-})
+test('CLI#Should exit with code 1', async (t) => {
+  try {
+    await exec('./wait-on');
+    t.assert.ifError(new Error('should not work'));
+  } catch (err) {
+    t.assert.equal(err.code, 1, 'Should exit with code 1');
+  }
+});

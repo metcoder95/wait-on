@@ -1,114 +1,104 @@
-'use strict'
-const os = require('node:os')
-const path = require('node:path')
-const { createServer } = require('node:http')
-const { setTimeout } = require('node:timers/promises')
+'use strict';
+const os = require('node:os');
+const path = require('node:path');
+const { createServer } = require('node:http');
+const { setTimeout } = require('node:timers/promises');
+const test = require('node:test');
 
-const { test } = require('tap')
+const waitOn = require('..');
 
-const waitOn = require('..')
+test('Basic Socket', async (t) => {
+  const tmpdir = os.tmpdir();
+  const socketPath = path.join(tmpdir, 'sock');
+  const server = createServer((_, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('OK');
+  });
 
-test('Wait-On#Socket', context => {
-  context.plan(4)
+  t.after(server.close.bind(server));
 
-  context.test('Basic Socket', async t => {
-    const tmpdir = os.tmpdir()
-    const socketPath = path.join(tmpdir, 'sock')
-    const server = createServer((_, res) => {
-      res.writeHead(200, { 'Content-Type': 'text/plain' })
-      res.end('OK')
-    })
+  const promise = waitOn({
+    resources: [`socket:${socketPath}`],
+  });
 
-    t.plan(1)
-    t.teardown(server.close.bind(server))
+  await setTimeout(1500).then(
+    () =>
+      new Promise((resolve, reject) => {
+        server.listen(socketPath, (err) => {
+          if (err != null) reject(err);
 
-    const promise = waitOn({
-      resources: [`socket:${socketPath}`]
-    })
+          resolve();
+        });
+      }),
+  );
 
-    await setTimeout(1500).then(
-      () =>
-        new Promise((resolve, reject) => {
-          server.listen(socketPath, err => {
-            if (err != null) reject(err)
+  const result = await promise;
 
-            resolve()
-          })
-        })
-    )
+  t.assert.equal(result, true);
+});
 
-    const result = await promise
+test('Basic Socket - with initial delay', async (t) => {
+  const tmpdir = os.tmpdir();
+  const socketPath = path.join(tmpdir, 'sock');
+  const server = createServer((_, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('OK');
+  });
 
-    t.equal(result, true)
-  })
+  t.after(server.close.bind(server));
 
-  context.test('Basic Socket - with initial delay', async t => {
-    const tmpdir = os.tmpdir()
-    const socketPath = path.join(tmpdir, 'sock')
-    const server = createServer((_, res) => {
-      res.writeHead(200, { 'Content-Type': 'text/plain' })
-      res.end('OK')
-    })
+  await new Promise((resolve, reject) => {
+    server.listen(socketPath, (err) => {
+      if (err != null) reject(err);
 
-    t.plan(1)
-    t.teardown(server.close.bind(server))
+      resolve();
+    });
+  });
 
-    await new Promise((resolve, reject) => {
-      server.listen(socketPath, err => {
-        if (err != null) reject(err)
+  const result = await waitOn({
+    resources: [`socket:${socketPath}`],
+    delay: 1500,
+  });
 
-        resolve()
-      })
-    })
+  t.assert.equal(result, true);
+});
 
-    const result = await waitOn({
-      resources: [`socket:${socketPath}`],
-      delay: 1500
-    })
+test('Basic Socket - immediate connect', async (t) => {
+  const tmpdir = os.tmpdir();
+  const socketPath = path.join(tmpdir, 'sock');
+  const server = createServer((_, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('OK');
+  });
 
-    t.equal(result, true)
-  })
+  t.after(server.close.bind(server));
 
-  context.test('Basic Socket - immediate connect', async t => {
-    const tmpdir = os.tmpdir()
-    const socketPath = path.join(tmpdir, 'sock')
-    const server = createServer((_, res) => {
-      res.writeHead(200, { 'Content-Type': 'text/plain' })
-      res.end('OK')
-    })
+  await new Promise((resolve, reject) => {
+    server.listen(socketPath, (err) => {
+      if (err != null) reject(err);
 
-    t.plan(1)
-    t.teardown(server.close.bind(server))
+      resolve();
+    });
+  });
 
-    await new Promise((resolve, reject) => {
-      server.listen(socketPath, err => {
-        if (err != null) reject(err)
+  const result = await waitOn({
+    resources: [`socket:${socketPath}`],
+  });
 
-        resolve()
-      })
-    })
+  t.assert.equal(result, true);
+});
 
-    const result = await waitOn({
-      resources: [`socket:${socketPath}`]
-    })
+test('Basic Socket with timeout', async (t) => {
+  const tmpdir = os.tmpdir();
+  const socketPath = path.join(tmpdir, 'sock');
 
-    t.equal(result, true)
-  })
+  const result = await waitOn({
+    resources: [`socket:${socketPath}`],
+    socket: {
+      timeout: 500,
+    },
+    timeout: 1000,
+  });
 
-  context.test('Basic Socket with timeout', async t => {
-    const tmpdir = os.tmpdir()
-    const socketPath = path.join(tmpdir, 'sock')
-
-    t.plan(1)
-
-    const result = await waitOn({
-      resources: [`socket:${socketPath}`],
-      socket: {
-        timeout: 500
-      },
-      timeout: 1000
-    })
-
-    t.equal(result, false)
-  })
-})
+  t.assert.equal(result, false);
+});

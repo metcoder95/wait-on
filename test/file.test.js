@@ -3,110 +3,99 @@ const os = require('node:os')
 const path = require('node:path')
 const { writeFile, unlink, appendFile } = require('node:fs/promises')
 const { setTimeout } = require('node:timers/promises')
-
-const { test } = require('tap')
+const test = require('node:test')
 
 const waitOn = require('..')
 
-test('Wait-On#File', context => {
-  context.plan(5)
+test('Basic File - write', async t => {
+  const tmpdir = os.tmpdir()
+  const filePath = path.join(tmpdir, 'test-file1.txt')
 
-  context.test('Basic File - write', async t => {
-    const tmpdir = os.tmpdir()
-    const filePath = path.join(tmpdir, 'test-file1.txt')
+  t.after(unlink.bind(null, filePath))
 
-    t.plan(1)
-    t.teardown(unlink.bind(null, filePath))
-
-    const promise = waitOn({
-      resources: [`file:/${filePath}`],
-      window: 1500
-    })
-
-    await setTimeout(500)
-
-    await writeFile(filePath, 'Hello World!')
-
-    const result = await promise
-
-    t.equal(result, true)
+  const promise = waitOn({
+    resources: [`file:/${filePath}`],
+    window: 1500
   })
 
-  context.test('Basic File - append', async t => {
-    const tmpdir = os.tmpdir()
-    const filePath = path.join(tmpdir, 'test-file2.txt')
+  await setTimeout(500)
 
-    t.plan(1)
-    t.teardown(unlink.bind(null, filePath))
+  await writeFile(filePath, 'Hello World!')
 
-    const promise = waitOn({
-      resources: [`file:/${filePath}`],
-      window: 1500
-    })
+  const result = await promise
 
-    await setTimeout(500)
+  t.assert.equal(result, true)
+})
 
-    await writeFile(filePath, 'Hello World!')
+test('Basic File - append', async t => {
+  const tmpdir = os.tmpdir()
+  const filePath = path.join(tmpdir, 'test-file2.txt')
 
-    await setTimeout(500)
+  t.after(unlink.bind(null, filePath))
 
-    await appendFile(filePath, 'Hello World!(x2)')
-
-    const result = await promise
-
-    t.equal(result, true)
+  const promise = waitOn({
+    resources: [`file:/${filePath}`],
+    window: 1500
   })
 
-  context.test('Basic File - with initial delay', async t => {
-    const tmpdir = os.tmpdir()
-    const filePath = path.join(tmpdir, 'test-file1.txt')
+  await setTimeout(500)
 
-    t.plan(1)
-    t.teardown(unlink.bind(null, filePath))
+  await writeFile(filePath, 'Hello World!')
 
-    const promise = waitOn({
-      resources: [`file:/${filePath}`],
-      window: 500,
-      delay: 1000
-    })
+  await setTimeout(500)
 
-    await setTimeout(1000)
+  await appendFile(filePath, 'Hello World!(x2)')
 
-    await writeFile(filePath, 'Hello World!')
+  const result = await promise
 
-    const result = await promise
+  t.assert.equal(result, true)
+})
 
-    t.equal(result, true)
+test('Basic File - with initial delay', async t => {
+  const tmpdir = os.tmpdir()
+  const filePath = path.join(tmpdir, 'test-file1.txt')
+
+  t.after(unlink.bind(null, filePath))
+
+  const promise = waitOn({
+    resources: [`file:/${filePath}`],
+    window: 500,
+    delay: 1000
   })
 
-  context.test('Basic File - file already exists', async t => {
-    const tmpdir = os.tmpdir()
-    const filePath = path.join(tmpdir, 'test-file3.txt')
+  await setTimeout(1000)
 
-    t.plan(1)
-    t.teardown(unlink.bind(null, filePath))
+  await writeFile(filePath, 'Hello World!')
 
-    await writeFile(filePath, 'Hello World!')
+  const result = await promise
 
-    const result = await waitOn({
-      resources: [`file:/${filePath}`],
-      window: 1500
-    })
+  t.assert.equal(result, true)
+})
 
-    t.equal(result, true)
+test('Basic File - file already exists', async t => {
+  const tmpdir = os.tmpdir()
+  const filePath = path.join(tmpdir, 'test-file3.txt')
+
+  t.after(unlink.bind(null, filePath))
+
+  await writeFile(filePath, 'Hello World!')
+
+  const result = await waitOn({
+    resources: [`file:/${filePath}`],
+    window: 1500
   })
 
-  context.test('Basic File with timeout', async t => {
-    const tmpdir = os.tmpdir()
-    const filePath = path.join(tmpdir, 'test-file4.txt')
+  t.assert.equal(result, true)
+})
 
-    t.plan(1)
+test('Basic File with timeout', async t => {
+  const tmpdir = os.tmpdir()
+  const filePath = path.join(tmpdir, 'test-file4.txt')
 
-    const result = await waitOn({
-      resources: [`file:/${filePath}`],
-      timeout: 1000
-    })
-
-    t.equal(result, false)
+  const result = await waitOn({
+    resources: [`file:/${filePath}`],
+    timeout: 1000
   })
+
+  t.assert.equal(result, false)
 })
