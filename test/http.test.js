@@ -1,219 +1,175 @@
-'use strict'
-const { createServer } = require('node:http')
-const { setTimeout } = require('node:timers/promises')
+'use strict';
+const { createServer } = require('node:http');
+const { setTimeout } = require('node:timers/promises');
+const { once } = require('node:events');
+const test = require('node:test');
 
-const { test } = require('tap')
+const waitOn = require('..');
 
-const waitOn = require('..')
+test('Basic HTTP', async (t) => {
+  let called = false;
+  const server = createServer((_req, res) => {
+    called = true;
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Hello World');
+  });
 
-test('Wait-On#HTTP', context => {
-  context.plan(7)
+  t.plan(2);
 
-  context.test('Basic HTTP', async t => {
-    let called = false
-    const server = createServer((_req, res) => {
-      called = true
-      res.writeHead(200, { 'Content-Type': 'text/plain' })
-      res.end('Hello World')
-    })
+  t.after(server.close.bind(server));
 
-    t.plan(2)
+  const waiting = waitOn({
+    resources: ['http://localhost:3001'],
+  });
 
-    t.teardown(server.close.bind(server))
+  await setTimeout(1500);
 
-    const waiting = waitOn({
-      resources: ['http://localhost:3001']
-    })
+  server.listen(3001);
+  await once(server, 'listening');
 
-    await setTimeout(1500)
+  const result = await waiting;
 
-    await new Promise((resolve, reject) => {
-      server.listen(3001, e => {
-        if (e != null) reject(e)
+  t.assert.ok(called);
+  t.assert.equal(result, true);
+});
 
-        resolve()
-      })
-    })
+test('Basic HTTP - with initial delay', async (t) => {
+  let called = false;
+  const server = createServer((_req, res) => {
+    called = true;
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Hello World');
+  });
 
-    const result = await waiting
+  t.after(server.close.bind(server));
 
-    t.ok(called)
-    t.equal(result, true)
-  })
+  const waiting = waitOn({
+    resources: ['http://localhost:3002'],
+    delay: 1000,
+  });
 
-  context.test('Basic HTTP - with initial delay', async t => {
-    let called = false
-    const server = createServer((_req, res) => {
-      called = true
-      res.writeHead(200, { 'Content-Type': 'text/plain' })
-      res.end('Hello World')
-    })
+  server.listen(3002);
+  await once(server, 'listening');
 
-    t.plan(2)
-    t.teardown(server.close.bind(server))
+  const result = await waiting;
 
-    const waiting = waitOn({
-      resources: ['http://localhost:3002'],
-      delay: 1000
-    })
+  t.assert.ok(called);
+  t.assert.equal(result, true);
+});
 
-    await new Promise((resolve, reject) => {
-      server.listen(3002, async e => {
-        if (e != null) reject(e)
-
-        resolve()
-      })
-    })
-
-    const result = await waiting
-
-    t.ok(called)
-    t.equal(result, true)
-  })
-
-  context.test(
-    'Basic HTTP - with initial delay - with custom status code check',
-    async t => {
-      let called = false
-      let callbackCalled = 0
-      const server = createServer((req, res) => {
-        if (!called) {
-          called = true
-          res.writeHead(404, { 'Content-Type': 'text/plain' })
-          res.end('Not Found')
-        } else {
-          res.writeHead(200, { 'Content-Type': 'text/plain' })
-          res.end('Hello World')
-          // Called twice because happy-eyeballs
-          t.ok(called)
-        }
-      })
-
-      t.plan(3)
-      t.teardown(server.close.bind(server))
-
-      const waiting = waitOn({
-        resources: ['http://localhost:3010'],
-        delay: 2000,
-        http: {
-          validateStatus: code => {
-            callbackCalled++
-            return code === 200
-          }
-        }
-      })
-
-      await setTimeout(500)
-      await new Promise((resolve, reject) => {
-        server.listen(3010, e => {
-          if (e != null) reject(e)
-          resolve()
-        })
-      })
-
-      const result = await waiting
-
-      t.equal(result, true)
-      t.equal(callbackCalled, 2)
+test('Basic HTTP - with initial delay - with custom status code check', async (t) => {
+  let called = false;
+  let callbackCalled = 0;
+  const server = createServer((req, res) => {
+    if (!called) {
+      called = true;
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    } else {
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end('Hello World');
+      // Called twice because happy-eyeballs
+      t.assert.ok(called);
     }
-  )
+  });
 
-  context.test('Basic HTTP - immediate connect', async t => {
-    let called = false
-    const server = createServer((_req, res) => {
-      called = true
-      res.writeHead(200, { 'Content-Type': 'text/plain' })
-      res.end('Hello World')
-    })
+  t.plan(3);
+  t.after(server.close.bind(server));
 
-    t.plan(2)
-    t.teardown(server.close.bind(server))
+  const waiting = waitOn({
+    resources: ['http://localhost:3010'],
+    delay: 2000,
+    http: {
+      validateStatus: (code) => {
+        callbackCalled++;
+        return code === 200;
+      },
+    },
+  });
 
-    await new Promise((resolve, reject) => {
-      server.listen(3003, async e => {
-        if (e != null) reject(e)
+  await setTimeout(500);
 
-        resolve()
-      })
-    })
+  server.listen(3010);
+  await once(server, 'listening');
 
-    const result = await waitOn({
-      resources: ['http://localhost:3003']
-    })
+  const result = await waiting;
 
-    t.ok(called)
-    t.equal(result, true)
-  })
+  t.assert.equal(result, true);
+  t.assert.equal(callbackCalled, 2);
+});
 
-  context.test(
-    'Basic HTTP - fallback to ipv6 if ipv4 not available on localhost',
-    async t => {
-      let ipv6Called = false
+test('Basic HTTP - immediate connect', async (t) => {
+  let called = false;
+  const server = createServer((_req, res) => {
+    called = true;
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Hello World');
+  });
 
-      const server6 = createServer((req, res) => {
-        ipv6Called = true
-        res.writeHead(200, { 'Content-Type': 'text/plain' })
-        res.end('Hello World')
-      })
+  t.after(server.close.bind(server));
 
-      t.plan(2)
+  server.listen(3003);
+  await once(server, 'listening');
 
-      t.teardown(server6.close.bind(server6))
+  const result = await waitOn({
+    resources: ['http://localhost:3003'],
+  });
 
-      await new Promise((resolve, reject) => {
-        server6.listen({ host: '::1', port: 3006 }, e => {
-          if (e != null) reject(e)
-          else resolve()
-        })
-      })
+  t.assert.ok(called);
+  t.assert.equal(result, true);
+});
 
-      const result = await waitOn({
-        resources: ['http://localhost:3006'],
-        window: 0,
-        interval: 0
-      })
+test('Basic HTTP - fallback to ipv6 if ipv4 not available on localhost', async (t) => {
+  let ipv6Called = false;
 
-      t.equal(result, true)
-      t.ok(ipv6Called)
-    }
-  )
+  const server6 = createServer((req, res) => {
+    ipv6Called = true;
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Hello World');
+  });
 
-  context.test(
-    'Basic HTTP - fallback to ipv4 if ipv6 not available on localhost',
-    async t => {
-      const server = createServer((req, res) => {
-        res.writeHead(200, { 'Content-Type': 'text/plain' })
-        res.end('Hello World')
-      })
+  t.after(server6.close.bind(server6));
 
-      t.plan(1)
+  server6.listen({ host: '::1', port: 3006 });
+  await once(server6, 'listening');
 
-      t.teardown(server.close.bind(server))
+  const result = await waitOn({
+    resources: ['http://localhost:3006'],
+    window: 0,
+    interval: 0,
+  });
 
-      const promise = waitOn({
-        resources: ['http://localhost:3007']
-      })
+  t.assert.equal(result, true);
+  t.assert.ok(ipv6Called);
+});
 
-      await setTimeout(1000)
+test('Basic HTTP - fallback to ipv4 if ipv6 not available on localhost', async (t) => {
+  const server = createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Hello World');
+  });
 
-      await new Promise((resolve, reject) => {
-        server.listen({ host: '::1', port: 3007 }, e => {
-          if (e != null) reject(e)
-          else resolve()
-        })
-      })
+  t.after(server.close.bind(server));
 
-      const result = await promise
-      t.equal(result, true)
-    }
-  )
+  const promise = waitOn({
+    resources: ['http://localhost:3007'],
+  });
 
-  context.test('Basic HTTP with timeout', t => {
-    t.plan(1)
+  await setTimeout(1000);
 
-    waitOn({
-      resources: ['http://localhost:3004'],
-      timeout: 500
-    }).then(result => t.equal(result, false), err => t.err(err))
-  })
-})
+  server.listen({ host: '::1', port: 3007 });
+  await once(server, 'listening');
+
+  const result = await promise;
+  t.assert.equal(result, true);
+});
+
+test('Basic HTTP with timeout', (t) => {
+  return waitOn({
+    resources: ['http://localhost:3004'],
+    timeout: 500,
+  }).then(
+    (result) => t.assert.equal(result, false),
+    (err) => t.assert.ifError(err),
+  );
+});
